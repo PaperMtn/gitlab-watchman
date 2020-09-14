@@ -1,0 +1,3 @@
+include *.txt
+recursive-include gitlab_watchman *.yaml *.yml
+recursive-exclude gitlab_watchman test*.yaml test*.yml
