@@ -13,7 +13,7 @@ Results for each search are output as CSV files in your current working director
 ## JSON formatted logging
 All other logging options output their logs in JSON format. Here is an example:
 
-```
+```json
 {"localtime": "2020-01-01 00:00:00,000", "level": "NOTIFY", "source": "GitLab Watchman", "scope": "blobs", "type": "Interesting Potentially Sensitive Files", "severity": "70", "detection": {"basename": "vendor/k8s.io/kubernetes/vendor/github.com/abbot/go-http-auth/test", "blob_id": null, "data": ".........", "path": "westeros_inc/lannister_docs/my.htpasswd", "project_id": 1001, "project_name": "westeros_inc", "project_url": "https://gitlab.westeros.inc/...."}}
 ```
 This should contain all of the information you require to ingest these logs into a SIEM, or other log analysis platform.
@@ -23,7 +23,7 @@ This should contain all of the information you require to ingest these logs into
 File logging saves JSON formatted logs to a file.
 
 The path where you want to output the file needs to be passed when running GitLab Watchman. This can be done via the .conf file:
-```
+```yaml
 gitlab_watchman:
   token: abc123
   url: https://gitlab.example.com
@@ -50,7 +50,7 @@ With this option, JSON formmatted logs are sent to a destination of your choosin
 
 You will need to pass GitLab Watchman a host and port to receive the logs, either via .conf file:
 
-```
+```yaml
 gitlab_watchman:
   token: abc123
   url: https://gitlab.example.com

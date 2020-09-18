@@ -2,17 +2,17 @@
 GitLab Watchman uses rules to provide the search terms to query GitLab and Regex patterns to filter out true positives.
 
 They are written in YAML, and follow this format:
-```
+```yaml
 ---
 filename: 
-enabled: [true|false]
+enabled: #[true|false]
 meta:
   name:
   author: 
   date: 
-  description: *what the search should find*
-  severity: *rating out of 100*
-scope: *what to search, any combination of the below*
+  description: #what the search should find#
+  severity: #rating out of 100#
+scope: #what to search, any combination of the below#
 - blobs
 - commits
 - milestones
@@ -21,12 +21,12 @@ scope: *what to search, any combination of the below*
 - merge_requests
 test_cases:
   match_cases:
-  - *test case that should match the regex*
+  - #test case that should match the regex#
   fail_cases:
-  - *test case that should not match the regex*
+  - #test case that should not match the regex#
 strings:
-- *search query to use in GitLab*
-pattern: *Regex pattern to filter out false positives*
+- #search query to use in GitLab#
+pattern: #Regex pattern to filter out false positives#
 ```
 
 Rules are stored in the directory watchman/rules, so you can see examples there.

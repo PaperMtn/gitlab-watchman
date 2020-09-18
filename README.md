@@ -45,17 +45,17 @@ GitLab Watchman uses custom YAML rules to detect matches in GitLab.
 
 They follow this format:
 
-```
+```yaml
 ---
 filename: 
-enabled: [true|false]
+enabled: #[true|false]
 meta:
   name:
   author: 
   date: 
-  description: *what the search should find*
-  severity: *rating out of 100*
-scope: *what to search, any combination of the below*
+  description: #what the search should find#
+  severity: #rating out of 100#
+scope: #what to search, any combination of the below#
 - blobs
 - commits
 - milestones
@@ -64,12 +64,12 @@ scope: *what to search, any combination of the below*
 - merge_requests
 test_cases:
   match_cases:
-  - *test case that should match the regex*
+  - #test case that should match the regex#
   fail_cases:
-  - *test case that should not match the regex*
+  - #test case that should not match the regex#
 strings:
-- *search query to use in GitLab*
-pattern: *Regex pattern to filter out false positives*
+- #search query to use in GitLab#
+pattern: #Regex pattern to filter out false positives#
 ```
 There are Python tests to ensure rules are formatted properly and that the Regex patterns work in the `tests` dir
 
@@ -127,7 +127,7 @@ GitLab Watchman will first try to get the the GitLab token and URL from the envi
 
 ### .conf file
 Configuration options can be passed in a file named `watchman.conf` which must be stored in your home directory. The file should follow the YAML format, and should look like below:
-```
+```yaml
 gitlab_watchman:
   token: abc123
   url: https://gitlab.example.com
@@ -143,6 +143,8 @@ GitLab Watchman will look for this file at runtime, and use the configuration op
 If you are having issues with your .conf file, run it through a YAML linter.
 
 An example file is in `docs/example.conf`
+
+**Note** If you use any other Watchman applications and already have a `watchman.conf` file, just append the conf data for GitLab Watchman to the existing file.
 
 ## Installation
 Install via pip
