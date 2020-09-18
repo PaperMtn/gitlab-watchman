@@ -18,6 +18,16 @@ RULES_PATH = (Path(__file__).parent / 'rules').resolve()
 OUTPUT_LOGGER = ''
 
 
+def validate_conf(path):
+    """Check the file gitlab_watchman.conf exists"""
+
+    if os.environ.get('GITLAB_WATCHMAN_TOKEN') and os.environ.get('GITLAB_WATCHMAN_URL'):
+        return True
+    if os.path.exists(path):
+        with open(path) as yaml_file:
+            return yaml.safe_load(yaml_file).get('gitlab_watchman')
+
+
 def find_variables(gitlab_connection, project_list):
     if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
         print = OUTPUT_LOGGER.log_info
@@ -217,22 +227,60 @@ def main():
             tf = cfg.MONTH_TIMEFRAME
         else:
             tf = cfg.ALL_TIME
+        conf_path = '{}/watchman.conf'.format(os.path.expanduser('~'))
 
-        if logging_type == 'file':
-            if os.environ.get('GITLAB_WATCHMAN_LOG_PATH'):
-                OUTPUT_LOGGER = logger.FileLogger(log_file=os.environ.get('GITLAB_WATCHMAN_LOG_PATH'))
-            else:
-                OUTPUT_LOGGER = logger.FileLogger()
-        elif logging_type == 'stdout':
-            OUTPUT_LOGGER = logger.StdoutLogger()
-        elif logging_type == 'stream':
-            if os.environ.get('GITLAB_WATCHMAN_HOST') and os.environ.get('GITLAB_WATCHMAN_PORT'):
-                OUTPUT_LOGGER = logger.SocketJSONLogger(os.environ.get('GITLAB_WATCHMAN_HOST'),
-                                                        os.environ.get('GITLAB_WATCHMAN_PORT'))
-            else:
-                OUTPUT_LOGGER = logger.SocketJSONLogger('localhost', 9020)
+        if not validate_conf(conf_path):
+            raise Exception(
+                colored('GITLAB_WATCHMAN_TOKEN environment variable or watchman.conf file not detected. '
+                        '\nEnsure environment variable is set or a valid file is located in your home '
+                        'directory: {} ', 'red')
+                .format(os.path.expanduser('~')))
         else:
+            config = validate_conf(conf_path)
+            connection = gitlab.initiate_gitlab_connection()
+
+        if logging_type:
+            if logging_type == 'file':
+                if os.environ.get('GITLAB_WATCHMAN_LOG_PATH'):
+                    OUTPUT_LOGGER = logger.FileLogger(os.environ.get('GITLAB_WATCHMAN_LOG_PATH'))
+                elif config.get('logging').get('file_logging').get('path') and \
+                        os.path.exists(config.get('logging').get('file_logging').get('path')):
+                    OUTPUT_LOGGER = logger.FileLogger(log_path=config.get('logging').get('file_logging').get('path'))
+                else:
+                    print('No config given, outputting gitlab_watchman.log file to home path')
+                    OUTPUT_LOGGER = logger.FileLogger(log_path=os.path.expanduser('~'))
+            elif logging_type == 'stdout':
+                OUTPUT_LOGGER = logger.StdoutLogger()
+            elif logging_type == 'stream':
+                if os.environ.get('GITLAB_WATCHMAN_HOST') and os.environ.get('GITLAB_WATCHMAN_PORT'):
+                    OUTPUT_LOGGER = logger.SocketJSONLogger(os.environ.get('GITLAB_WATCHMAN_HOST'),
+                                                            os.environ.get('GITLAB_WATCHMAN_PORT'))
+                elif config.get('logging').get('json_tcp').get('host') and \
+                        config.get('logging').get('json_tcp').get('port'):
+                    OUTPUT_LOGGER = logger.SocketJSONLogger(config.get('logging').get('json_tcp').get('host'),
+                                                            config.get('logging').get('json_tcp').get('port'))
+                else:
+                    raise Exception("JSON TCP stream selected with no config")
+            else:
+                OUTPUT_LOGGER = logger.CSVLogger()
+        else:
+            print('No logging option selected, defaulting to CSV')
             OUTPUT_LOGGER = logger.CSVLogger()
+        # if logging_type == 'file':
+        #     if os.environ.get('GITLAB_WATCHMAN_LOG_PATH'):
+        #         OUTPUT_LOGGER = logger.FileLogger(log_file=os.environ.get('GITLAB_WATCHMAN_LOG_PATH'))
+        #     else:
+        #         OUTPUT_LOGGER = logger.FileLogger()
+        # elif logging_type == 'stdout':
+        #     OUTPUT_LOGGER = logger.StdoutLogger()
+        # elif logging_type == 'stream':
+        #     if os.environ.get('GITLAB_WATCHMAN_HOST') and os.environ.get('GITLAB_WATCHMAN_PORT'):
+        #         OUTPUT_LOGGER = logger.SocketJSONLogger(os.environ.get('GITLAB_WATCHMAN_HOST'),
+        #                                                 os.environ.get('GITLAB_WATCHMAN_PORT'))
+        #     else:
+        #         OUTPUT_LOGGER = logger.SocketJSONLogger('localhost', 9020)
+        # else:
+        #     OUTPUT_LOGGER = logger.CSVLogger()
 
         now = int(time.time())
         today = date.today().strftime('%Y-%m-%d')
@@ -270,7 +318,7 @@ def main():
             OUTPUT_LOGGER.log_info('{} rules loaded'.format(len(rules_list)))
             print = OUTPUT_LOGGER.log_info
 
-        connection = gitlab.initiate_gitlab_connection()
+        # connection = gitlab.initiate_gitlab_connection()
 
         if everything:
             print(colored('Getting everything...', 'magenta'))

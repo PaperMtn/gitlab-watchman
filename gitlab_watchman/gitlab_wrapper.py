@@ -5,6 +5,7 @@ import os
 import re
 import time
 import requests
+import yaml
 from requests.exceptions import HTTPError
 
 import gitlab_watchman.config as cfg
@@ -15,7 +16,7 @@ class GitLabAPIClient(object):
 
     def __init__(self, token, base_url):
         self.token = token
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('\\')
         self.per_page = 100
         self.session = session = requests.session()
         session.mount(self.base_url, requests.adapters.HTTPAdapter())
@@ -23,7 +24,7 @@ class GitLabAPIClient(object):
 
     def make_request(self, url, params=None, data=None, method='GET', verify_ssl=True):
         try:
-            relative_url = '/'.join((self.base_url, url))
+            relative_url = '/'.join((self.base_url, 'api/v4', url))
             response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
             response.raise_for_status()
 
@@ -64,19 +65,23 @@ class GitLabAPIClient(object):
 
         results = []
         page = 1
-        params = {'scope': search_scope,
-                  'search': search_term,
-                  'per_page': self.per_page,
-                  'page': ''}
+        params = {
+            'scope': search_scope,
+            'search': search_term,
+            'per_page': self.per_page,
+            'page': ''
+        }
 
         response = self.make_request(url, params=params)
         page_count = response.headers.get('X-Total-Pages')
 
         while page <= int(page_count):
-            params = {'scope': search_scope,
-                      'search': search_term,
-                      'per_page': self.per_page,
-                      'page': page}
+            params = {
+                'scope': search_scope,
+                'search': search_term,
+                'per_page': self.per_page,
+                'page': page
+            }
             r = self.make_request(url, params=params).json()
             for value in r:
                 results.append(value)
@@ -90,19 +95,23 @@ class GitLabAPIClient(object):
 
         results = []
 
-        params = {'pagination': 'keyset',
-                  'per_page': self.per_page,
-                  'order_by': 'id',
-                  'sort': 'asc'}
+        params = {
+            'pagination': 'keyset',
+            'per_page': self.per_page,
+            'order_by': 'id',
+            'sort': 'asc'
+        }
 
         response = self.make_request('projects', params=params)
         while 'link' in response.headers:
             next_url = response.headers.get('link')
-            params = {'pagination': 'keyset',
-                      'per_page': self.per_page,
-                      'order_by': 'id',
-                      'sort': 'asc',
-                      'id_after': next_url.split('id_after=')[1].split('&')[0]}
+            params = {
+                'pagination': 'keyset',
+                'per_page': self.per_page,
+                'order_by': 'id',
+                'sort': 'asc',
+                'id_after': next_url.split('id_after=')[1].split('&')[0]
+            }
             response = self.make_request('projects', params=params)
             for value in response.json():
                 results.append(value)
@@ -113,8 +122,21 @@ class GitLabAPIClient(object):
 def initiate_gitlab_connection():
     """Create a GitLab API client object"""
 
-    token = os.environ.get('GITLAB_WATCHMAN_TOKEN')
-    url = os.environ.get('GITLAB_WATCHMAN_URL')
+    try:
+        token = os.environ['GITLAB_WATCHMAN_TOKEN']
+    except KeyError:
+        with open('{}/watchman.conf'.format(os.path.expanduser('~'))) as yaml_file:
+            config = yaml.safe_load(yaml_file)
+
+        token = config.get('gitlab_watchman').get('token')
+
+    try:
+        url = os.environ['GITLAB_WATCHMAN_URL']
+    except KeyError:
+        with open('{}/watchman.conf'.format(os.path.expanduser('~'))) as yaml_file:
+            config = yaml.safe_load(yaml_file)
+
+        url = config.get('gitlab_watchman').get('url')
 
     return GitLabAPIClient(token, url)
 
@@ -147,7 +169,7 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, search_terms, regex, ti
 
     for query in search_terms:
         commit_list = gitlab.global_search('search', query, search_scope='commits')
-        print('{} commits found matching: {}'.format(len(commit_list), query))
+        print('{} commits found matching: {}'.format(len(commit_list), query.replace('"','')))
         for commit in commit_list:
             r = re.compile(regex)
             if convert_time(commit.get('committed_date')) > (now - timeframe) and r.search(str(commit.get('message'))):
@@ -186,7 +208,7 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
 
     for query in search_terms:
         milestone_list = gitlab.global_search('search', query, search_scope='milestones')
-        print('{} milestones found matching: {}'.format(len(milestone_list), query))
+        print('{} milestones found matching: {}'.format(len(milestone_list), query.replace('"','')))
         for milestone in milestone_list:
             r = re.compile(regex)
             if convert_time(milestone.get('updated_at')) > (now - timeframe) and r.search(
@@ -227,7 +249,7 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, search_terms, regex, tim
 
     for query in search_terms:
         issue_list = gitlab.global_search('search', query, search_scope='issues')
-        print('{} issues found matching: {}'.format(len(issue_list), query))
+        print('{} issues found matching: {}'.format(len(issue_list), query.replace('"','')))
         for issue in issue_list:
             r = re.compile(regex)
             if convert_time(issue.get('updated_at')) > (now - timeframe) and r.search(str(issue.get('description'))):
@@ -277,7 +299,7 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
 
     for query in search_terms:
         blob_list = gitlab.global_search('search', query, search_scope='wiki_blobs')
-        print('{} wiki blobs found matching: {}'.format(len(blob_list), query))
+        print('{} wiki blobs found matching: {}'.format(len(blob_list), query.replace('"','')))
         for blob in blob_list:
             r = re.compile(regex)
             project = gitlab.get_project(blob.get('project_id'))
@@ -314,7 +336,7 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, search_terms, re
 
     for query in search_terms:
         merge_request_list = gitlab.global_search('search', query, search_scope='merge_requests')
-        print('{} merge requests found matching: {}'.format(len(merge_request_list), query))
+        print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"','')))
         for merge_request in merge_request_list:
             r = re.compile(regex)
             if convert_time(merge_request['updated_at']) > (now - timeframe) and \
@@ -363,7 +385,7 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, time
 
     for query in search_terms:
         blob_list = gitlab.global_search('search', query, search_scope='blobs')
-        print('{} blobs found matching search term: {}'.format(len(blob_list), query))
+        print('{} blobs found matching search term: {}'.format(len(blob_list), query.replace('"','')))
         for blob in blob_list:
             r = re.compile(regex)
             project = gitlab.get_project(blob.get('project_id'))
@@ -407,7 +429,6 @@ def get_public_variables(gitlab: GitLabAPIClient, project_list):
         return results
     else:
         print('No exposed variables found')
-
 
 # def search_notes(gitlab: GitLabAPIClient, search_terms, regex, project_id):
 #     """Searches the given project for any notes matching the search term.
