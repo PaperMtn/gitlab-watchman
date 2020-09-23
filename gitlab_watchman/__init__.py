@@ -35,7 +35,7 @@ def find_variables(gitlab_connection, project_list):
         print = builtins.print
 
     print(colored('Searching for publicly exposed CICD variables', 'magenta'))
-    variables = gitlab.get_public_variables(gitlab_connection, project_list)
+    variables = gitlab.get_public_variables(gitlab_connection, OUTPUT_LOGGER, project_list)
 
     return variables
 
@@ -45,115 +45,130 @@ def search(gitlab_connection, rule, tf, scope):
         print = OUTPUT_LOGGER.log_info
     else:
         print = builtins.print
+    try:
+        if scope == 'blobs':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'blobs'), 'yellow'))
 
-    if scope == 'blobs':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'blobs'), 'yellow'))
+            blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            if blobs:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'blobs',
+                                            blobs)
+                else:
+                    for log_data in blobs:
+                        OUTPUT_LOGGER.log_notification(log_data, 'blobs', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
 
-        blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
-        if blobs:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'blobs',
-                                        blobs)
-            else:
-                for log_data in blobs:
-                    OUTPUT_LOGGER.log_notification(log_data, 'blobs', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        if scope == 'commits':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'commits'), 'yellow'))
 
-    if scope == 'commits':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'commits'), 'yellow'))
+            commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            if commits:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'commits',
+                                            commits)
+                else:
+                    for log_data in commits:
+                        OUTPUT_LOGGER.log_notification(log_data, 'commits', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
 
-        commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
-        if commits:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'commits',
-                                        commits)
-            else:
-                for log_data in commits:
-                    OUTPUT_LOGGER.log_notification(log_data, 'commits', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        if scope == 'issues':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'issues'), 'yellow'))
 
-    if scope == 'issues':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'issues'), 'yellow'))
+            issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            if issues:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'issues',
+                                            issues)
+                else:
+                    for log_data in issues:
+                        OUTPUT_LOGGER.log_notification(log_data, 'issues', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
 
-        issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
-        if issues:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'issues',
-                                        issues)
-            else:
-                for log_data in issues:
-                    OUTPUT_LOGGER.log_notification(log_data, 'issues', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        if scope == 'wiki_blobs':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'wiki blobs'), 'yellow'))
 
-    if scope == 'wiki_blobs':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'wiki blobs'), 'yellow'))
+            wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
+                                                  rule.get('pattern'), tf)
+            if wiki_blobs:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'wiki_blobs',
+                                            wiki_blobs)
+                else:
+                    for log_data in wiki_blobs:
+                        OUTPUT_LOGGER.log_notification(log_data, 'wiki_blobs', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
 
-        wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                              rule.get('pattern'), tf)
-        if wiki_blobs:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'wiki_blobs',
-                                        wiki_blobs)
-            else:
-                for log_data in wiki_blobs:
-                    OUTPUT_LOGGER.log_notification(log_data, 'wiki_blobs', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        if scope == 'merge_requests':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'merge requests'), 'yellow'))
 
-    if scope == 'merge_requests':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'merge requests'), 'yellow'))
+            merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
+                                                          rule.get('pattern'), tf)
+            if merge_requests:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'merge_requests',
+                                            merge_requests)
+                else:
+                    for log_data in merge_requests:
+                        OUTPUT_LOGGER.log_notification(log_data, 'merge_requests', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
 
-        merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                                      rule.get('pattern'), tf)
-        if merge_requests:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'merge_requests',
-                                        merge_requests)
-            else:
-                for log_data in merge_requests:
-                    OUTPUT_LOGGER.log_notification(log_data, 'merge_requests', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        if scope == 'milestones':
+            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
+                                                          'milestones'), 'yellow'))
+            milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
+                                                  rule.get('pattern'), tf)
+            if milestones:
+                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
+                                            'milestones',
+                                            milestones)
+                else:
+                    for log_data in milestones:
+                        OUTPUT_LOGGER.log_notification(log_data, 'milestones', rule.get('meta').get('name'),
+                                                       rule.get('meta').get('severity'))
+                    print('Results output to log')
+    except Exception as e:
+        if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
+            print = OUTPUT_LOGGER.log_critical
+        else:
+            print = builtins.print
 
-    if scope == 'milestones':
-        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                      'milestones'), 'yellow'))
-        milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                              rule.get('pattern'), tf)
-        if milestones:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                        'milestones',
-                                        milestones)
-            else:
-                for log_data in milestones:
-                    OUTPUT_LOGGER.log_notification(log_data, 'milestones', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
+        print(colored(e, 'red'))
 
 
 def load_rules():
     rules = []
-    for file in os.scandir(RULES_PATH):
-        if file.name.endswith('.yaml'):
-            with open(file) as yaml_file:
-                rule = yaml.safe_load(yaml_file)
-                if rule.get('enabled'):
-                    rules.append(rule)
-    return rules
+    try:
+        for file in os.scandir(RULES_PATH):
+            if file.name.endswith('.yaml'):
+                with open(file) as yaml_file:
+                    rule = yaml.safe_load(yaml_file)
+                    if rule.get('enabled'):
+                        rules.append(rule)
+        return rules
+    except Exception as e:
+        if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
+            print = OUTPUT_LOGGER.log_critical
+        else:
+            print = builtins.print
+
+        print(colored(e, 'red'))
 
 
 # def find_comments(project_list):
@@ -335,7 +350,7 @@ def main():
                     search(connection, rule, tf, 'wiki_blobs')
                 if 'milestones' in rule.get('scope'):
                     search(connection, rule, tf, 'milestones')
-            print(colored('Enumerating projects\n+++++++++++++++++++++', 'yellow'))
+            print(colored('Enumerating projects', 'yellow'))
             projects = connection.get_all_projects()
             output_vars = find_variables(connection, projects)
             if output_vars:
@@ -399,7 +414,7 @@ def main():
 
     except Exception as e:
         if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
-            print = OUTPUT_LOGGER.log_info
+            print = OUTPUT_LOGGER.log_critical
         else:
             print = builtins.print
 

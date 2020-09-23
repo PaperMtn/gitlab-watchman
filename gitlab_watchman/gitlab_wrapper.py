@@ -31,14 +31,20 @@ class GitLabAPIClient(object):
             return response
 
         except HTTPError as http_error:
-            print('HTTPError: {}'.format(http_error))
-            if response.status_code == 502 or response.status_code == 500:
+            if response.status_code == 400:
+                if response.json().get('message').get('error'):
+                    raise Exception(response.json().get('message').get('error'))
+                else:
+                    raise http_error
+            elif response.status_code == 502 or response.status_code == 500:
                 print('Retrying...')
                 time.sleep(30)
                 response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
                 response.raise_for_status()
 
                 return response
+            else:
+                raise http_error
 
         except Exception as e:
             print(e)
@@ -75,17 +81,26 @@ class GitLabAPIClient(object):
         response = self.make_request(url, params=params)
         page_count = response.headers.get('X-Total-Pages')
 
-        while page <= int(page_count):
+        if page_count:
+            while page <= int(page_count):
+                params = {
+                    'scope': search_scope,
+                    'search': search_term,
+                    'per_page': self.per_page,
+                    'page': page
+                }
+                r = self.make_request(url, params=params).json()
+                for value in r:
+                    results.append(value)
+                page += 1
+        else:
             params = {
                 'scope': search_scope,
                 'search': search_term,
-                'per_page': self.per_page,
-                'page': page
             }
             r = self.make_request(url, params=params).json()
             for value in r:
                 results.append(value)
-            page += 1
 
         return results
 
@@ -169,7 +184,7 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, search_terms, regex, ti
 
     for query in search_terms:
         commit_list = gitlab.global_search('search', query, search_scope='commits')
-        print('{} commits found matching: {}'.format(len(commit_list), query.replace('"','')))
+        print('{} commits found matching: {}'.format(len(commit_list), query.replace('"', '')))
         for commit in commit_list:
             r = re.compile(regex)
             if convert_time(commit.get('committed_date')) > (now - timeframe) and r.search(str(commit.get('message'))):
@@ -208,7 +223,7 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
 
     for query in search_terms:
         milestone_list = gitlab.global_search('search', query, search_scope='milestones')
-        print('{} milestones found matching: {}'.format(len(milestone_list), query.replace('"','')))
+        print('{} milestones found matching: {}'.format(len(milestone_list), query.replace('"', '')))
         for milestone in milestone_list:
             r = re.compile(regex)
             if convert_time(milestone.get('updated_at')) > (now - timeframe) and r.search(
@@ -249,7 +264,7 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, search_terms, regex, tim
 
     for query in search_terms:
         issue_list = gitlab.global_search('search', query, search_scope='issues')
-        print('{} issues found matching: {}'.format(len(issue_list), query.replace('"','')))
+        print('{} issues found matching: {}'.format(len(issue_list), query.replace('"', '')))
         for issue in issue_list:
             r = re.compile(regex)
             if convert_time(issue.get('updated_at')) > (now - timeframe) and r.search(str(issue.get('description'))):
@@ -299,7 +314,7 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
 
     for query in search_terms:
         blob_list = gitlab.global_search('search', query, search_scope='wiki_blobs')
-        print('{} wiki blobs found matching: {}'.format(len(blob_list), query.replace('"','')))
+        print('{} wiki blobs found matching: {}'.format(len(blob_list), query.replace('"', '')))
         for blob in blob_list:
             r = re.compile(regex)
             project = gitlab.get_project(blob.get('project_id'))
@@ -336,7 +351,7 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, search_terms, re
 
     for query in search_terms:
         merge_request_list = gitlab.global_search('search', query, search_scope='merge_requests')
-        print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"','')))
+        print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"', '')))
         for merge_request in merge_request_list:
             r = re.compile(regex)
             if convert_time(merge_request['updated_at']) > (now - timeframe) and \
@@ -385,7 +400,7 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, time
 
     for query in search_terms:
         blob_list = gitlab.global_search('search', query, search_scope='blobs')
-        print('{} blobs found matching search term: {}'.format(len(blob_list), query.replace('"','')))
+        print('{} blobs found matching search term: {}'.format(len(blob_list), query.replace('"', '')))
         for blob in blob_list:
             r = re.compile(regex)
             project = gitlab.get_project(blob.get('project_id'))
@@ -409,10 +424,14 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, time
         print('No matches found after filtering')
 
 
-def get_public_variables(gitlab: GitLabAPIClient, project_list):
+def get_public_variables(gitlab: GitLabAPIClient, log_handler, project_list):
     """Searches all projects for public CICD variables"""
 
     results = []
+    if isinstance(log_handler, logger.StdoutLogger):
+        print = log_handler.log_info
+    else:
+        print = builtins.print
 
     for i in project_list:
         if gitlab.get_variables(i.get('id')):
