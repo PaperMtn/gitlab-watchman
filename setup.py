@@ -8,6 +8,8 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md'))
 setup(
     name='gitlab-watchman',
     version=a.__version__,
+    url=a.__uri__,
+    license=a.__license__,
     classifiers=[
         'Intended Audience :: Information Technology',
         'Topic :: Security',
