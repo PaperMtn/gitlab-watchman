@@ -19,13 +19,13 @@ OUTPUT_LOGGER = ''
 
 
 def validate_conf(path):
-    """Check the file gitlab_watchman.conf exists"""
+    """Check the file watchman.conf exists"""
 
     if os.environ.get('GITLAB_WATCHMAN_TOKEN') and os.environ.get('GITLAB_WATCHMAN_URL'):
         return True
     if os.path.exists(path):
         with open(path) as yaml_file:
-            return yaml.safe_load(yaml_file).get('gitlab_watchman')
+            return yaml.safe_load(yaml_file).get('watchman')
 
 
 def find_variables(gitlab_connection, project_list):
@@ -50,7 +50,7 @@ def search(gitlab_connection, rule, tf, scope):
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'blobs'), 'yellow'))
 
-            blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if blobs:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -66,7 +66,7 @@ def search(gitlab_connection, rule, tf, scope):
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'commits'), 'yellow'))
 
-            commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if commits:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -82,7 +82,7 @@ def search(gitlab_connection, rule, tf, scope):
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'issues'), 'yellow'))
 
-            issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'), rule.get('pattern'), tf)
+            issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if issues:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -98,8 +98,7 @@ def search(gitlab_connection, rule, tf, scope):
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'wiki blobs'), 'yellow'))
 
-            wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                                  rule.get('pattern'), tf)
+            wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if wiki_blobs:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -115,8 +114,7 @@ def search(gitlab_connection, rule, tf, scope):
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'merge requests'), 'yellow'))
 
-            merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                                          rule.get('pattern'), tf)
+            merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if merge_requests:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -131,8 +129,7 @@ def search(gitlab_connection, rule, tf, scope):
         if scope == 'milestones':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'milestones'), 'yellow'))
-            milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule.get('strings'),
-                                                  rule.get('pattern'), tf)
+            milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if milestones:
                 if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
                     OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
@@ -171,23 +168,6 @@ def load_rules():
         print(colored(e, 'red'))
 
 
-# def find_comments(project_list):
-#     print(colored('Searching project comments', 'magenta'))
-#     # passwords = []
-#     azure = []
-#     for project in project_list:
-#         azure.append(g.search_notes(d.AZURE_API_QUERIES, d.AZURE_REGEX, project['id']))
-#         # passwords.append(g.search_notes(d.PASSWORD_QUERIES, d.PASSWORD_REGEX, project['id']))
-#     # passwords = list(filter(None, passwords))
-#     azure = list(filter(None, azure))
-#     # if passwords:
-#     #     flattened_passwords = [item for sublist in passwords for item in sublist]
-#     #     g.write_notes(flattened_passwords, 'comments_passwords')
-#     if azure:
-#         flattened_passwords = [item for sublist in azure for item in sublist]
-#         g.write_notes(flattened_passwords, 'comments_azure')
-
-
 def main():
     global OUTPUT_LOGGER
     try:
@@ -218,8 +198,6 @@ def main():
                             help='Search for publicly exposed CICD variables')
         parser.add_argument('--milestones', dest='milestones', action='store_true',
                             help='Search milestones')
-        parser.add_argument('--comments', dest='comments', action='store_true',
-                            help='Search comments')
 
         args = parser.parse_args()
         tm = args.time
@@ -231,7 +209,6 @@ def main():
         merge = args.merge
         variables = args.variables
         milestones = args.milestones
-        comments = args.comments
         logging_type = args.logging_type
 
         if tm == 'd':
@@ -281,21 +258,6 @@ def main():
         else:
             print('No logging option selected, defaulting to CSV')
             OUTPUT_LOGGER = logger.CSVLogger()
-        # if logging_type == 'file':
-        #     if os.environ.get('GITLAB_WATCHMAN_LOG_PATH'):
-        #         OUTPUT_LOGGER = logger.FileLogger(log_file=os.environ.get('GITLAB_WATCHMAN_LOG_PATH'))
-        #     else:
-        #         OUTPUT_LOGGER = logger.FileLogger()
-        # elif logging_type == 'stdout':
-        #     OUTPUT_LOGGER = logger.StdoutLogger()
-        # elif logging_type == 'stream':
-        #     if os.environ.get('GITLAB_WATCHMAN_HOST') and os.environ.get('GITLAB_WATCHMAN_PORT'):
-        #         OUTPUT_LOGGER = logger.SocketJSONLogger(os.environ.get('GITLAB_WATCHMAN_HOST'),
-        #                                                 os.environ.get('GITLAB_WATCHMAN_PORT'))
-        #     else:
-        #         OUTPUT_LOGGER = logger.SocketJSONLogger('localhost', 9020)
-        # else:
-        #     OUTPUT_LOGGER = logger.CSVLogger()
 
         now = int(time.time())
         today = date.today().strftime('%Y-%m-%d')
@@ -333,8 +295,6 @@ def main():
             OUTPUT_LOGGER.log_info('{} rules loaded'.format(len(rules_list)))
             print = OUTPUT_LOGGER.log_info
 
-        # connection = gitlab.initiate_gitlab_connection()
-
         if everything:
             print(colored('Getting everything...', 'magenta'))
             for rule in rules_list:
@@ -359,7 +319,6 @@ def main():
                 else:
                     for log_data in output_vars:
                         OUTPUT_LOGGER.log_notification(log_data, 'variables', detect_type='cicd variables', severity=90)
-            # find_comments(projects)
         else:
             if blobs:
                 print(colored('Searching blobs', 'magenta'))
@@ -403,11 +362,6 @@ def main():
                             OUTPUT_LOGGER.log_notification(log_data, 'variables', detect_type='cicd variables',
                                                            severity=90)
 
-            # if comments:
-            #     print(colored('Enumerating projects\n+++++++++++++++++++++', 'yellow'))
-            #     projects = g.get_all_projects()
-            #     print(colored('{} projects collected\n+++++++++++++++++++++'.format(len(projects)), 'yellow'))
-            #     find_comments(projects)
         print(colored('++++++Audit completed++++++', 'green'))
 
         deinit()

@@ -17,6 +17,7 @@ test_cases:
   - blank
 strings:
 - "* extension:openvpn"
+- "* extension:ovpn"
 - "* extension:cscfg"
 - "* extension:rdp"
 - "* extension:jks"

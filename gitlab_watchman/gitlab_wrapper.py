@@ -171,7 +171,7 @@ def deduplicate(input_list):
     return [json.loads(s) for s in list_of_strings]
 
 
-def search_commits(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_commits(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get commits matching a search term.
         This is then filtered by regex to find true matches"""
 
@@ -182,11 +182,11 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, search_terms, regex, ti
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         commit_list = gitlab.global_search('search', query, search_scope='commits')
         print('{} commits found matching: {}'.format(len(commit_list), query.replace('"', '')))
         for commit in commit_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             if convert_time(commit.get('committed_date')) > (now - timeframe) and r.search(str(commit.get('message'))):
                 project = gitlab.get_project(commit.get('project_id'))
                 results_dict = {
@@ -210,7 +210,7 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, search_terms, regex, ti
         print('No matches found after filtering')
 
 
-def search_milestones(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_milestones(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get milestones matching a search term.
          This is then filtered by regex to find true matches"""
 
@@ -221,11 +221,11 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         milestone_list = gitlab.global_search('search', query, search_scope='milestones')
         print('{} milestones found matching: {}'.format(len(milestone_list), query.replace('"', '')))
         for milestone in milestone_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             if convert_time(milestone.get('updated_at')) > (now - timeframe) and r.search(
                     str(milestone['description'])):
                 project = gitlab.get_project(milestone.get('project_id'))
@@ -251,7 +251,7 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
         print('No matches found after filtering')
 
 
-def search_issues(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_issues(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get issues matching a search term.
          This is then filtered by regex to find true matches"""
 
@@ -262,11 +262,11 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, search_terms, regex, tim
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         issue_list = gitlab.global_search('search', query, search_scope='issues')
         print('{} issues found matching: {}'.format(len(issue_list), query.replace('"', '')))
         for issue in issue_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             if convert_time(issue.get('updated_at')) > (now - timeframe) and r.search(str(issue.get('description'))):
                 project = gitlab.get_project(issue.get('project_id'))
                 results_dict = {
@@ -301,7 +301,7 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, search_terms, regex, tim
         print('No matches found after filtering')
 
 
-def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get wiki blobs matching a search term.
          This is then filtered by regex to find true matches"""
 
@@ -312,11 +312,11 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         blob_list = gitlab.global_search('search', query, search_scope='wiki_blobs')
         print('{} wiki blobs found matching: {}'.format(len(blob_list), query.replace('"', '')))
         for blob in blob_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             project = gitlab.get_project(blob.get('project_id'))
             if convert_time(project.get('last_activity_at')) > (now - timeframe) and r.search(str(blob.get('data'))):
                 results_dict = {
@@ -338,7 +338,7 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex,
         print('No matches found after filtering')
 
 
-def search_merge_requests(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get merge requests matching a search term.
          This is then filtered by regex to find true matches"""
 
@@ -349,11 +349,11 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, search_terms, re
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         merge_request_list = gitlab.global_search('search', query, search_scope='merge_requests')
         print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"', '')))
         for merge_request in merge_request_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             if convert_time(merge_request['updated_at']) > (now - timeframe) and \
                     r.search(str(merge_request['description'])):
                 project = gitlab.get_project(merge_request['project_id'])
@@ -387,7 +387,7 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, search_terms, re
         print('No matches found after filtering')
 
 
-def search_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, timeframe=cfg.ALL_TIME):
+def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
     """Uses the Search API to get blobs matching a search term.
          This is then filtered by regex to find true matches"""
 
@@ -398,11 +398,11 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, search_terms, regex, time
     else:
         print = builtins.print
 
-    for query in search_terms:
+    for query in rule.get('strings'):
         blob_list = gitlab.global_search('search', query, search_scope='blobs')
         print('{} blobs found matching search term: {}'.format(len(blob_list), query.replace('"', '')))
         for blob in blob_list:
-            r = re.compile(regex)
+            r = re.compile(rule.get('pattern'))
             project = gitlab.get_project(blob.get('project_id'))
             if convert_time(project.get('last_activity_at')) > (now - timeframe) and r.search(str(blob)):
                 results_dict = {
@@ -448,37 +448,3 @@ def get_public_variables(gitlab: GitLabAPIClient, log_handler, project_list):
         return results
     else:
         print('No exposed variables found')
-
-# def search_notes(gitlab: GitLabAPIClient, search_terms, regex, project_id):
-#     """Searches the given project for any notes matching the search term.
-#         This is then filtered by regex to find true matches"""
-#
-#     for query in search_terms:
-#         results = []
-#         notes_list = gitlab.global_search('projects/{}/search'.format(project_id), query, search_scope='notes')
-#         for note in notes_list:
-#             r = re.compile(regex)
-#             if r.search(str(note.get('body'))):
-#                 project = gitlab.get_project(project_id)
-#                 print('Match found for {} in project {}'.format(query, project['name']))
-#                 results.append([project_id,
-#                                 project['name'],
-#                                 project['web_url'],
-#                                 note['body'],
-#                                 note['updated_at']])
-#         if results:
-#             print('{} matches found for {}'.format(len(results), query))
-#             return results
-
-# def write_notes(result_list, file_name):
-#     """Writes any found notes to CSV"""
-#
-#     headers = ['project_id',
-#                'project_name',
-#                'repository_url',
-#                'data',
-#                'last_activity']
-#     out_path = os.getcwd()
-#     path = '{}/{}.csv'.format(out_path, file_name)
-#     write_csv(headers, path, result_list)
-#     print('CSV written: {}'.format(path))

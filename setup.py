@@ -28,12 +28,12 @@ setup(
         'termcolor',
         'PyYAML',
     ],
-    packages=['watchman'],
+    packages=['gitlab_watchman'],
     include_package_data=True,
     package_data={
             "": ["*.yml", "*.yaml"],
         },
     entry_points={
-        'console_scripts': ['gitlab-watchman=watchman:main']
+        'console_scripts': ['gitlab-watchman=gitlab_watchman:main']
     }
 )

@@ -47,19 +47,19 @@ They follow this format:
 
 ```yaml
 ---
-filename: 
+filename:
 enabled: #[true|false]
 meta:
   name:
-  author: 
-  date: 
+  author:
+  date:
   description: #what the search should find#
   severity: #rating out of 100#
 scope: #what to search, any combination of the below#
 - blobs
 - commits
 - milestones
-- wiki_blobs 
+- wiki_blobs
 - issues
 - merge_requests
 test_cases:
@@ -133,10 +133,10 @@ gitlab_watchman:
   url: https://gitlab.example.com
   logging:
     file_logging:
-      path: 
+      path:
     json_tcp:
-      host: 
-      port: 
+      host:
+      port:
 ```
 GitLab Watchman will look for this file at runtime, and use the configuration options from here. If you are not using the advanced logging features, leave them blank.
 
@@ -192,3 +192,8 @@ You can run GitLab Watchman to look for everything, and output to default CSV:
 Or arguments can be grouped together to search more granularly. This will look for commits and milestones for the last 30 days, and output the results to a TCP stream:
 
 `gitlab-watchman --timeframe m --commits --milestones --output stream`
+
+## Other Watchman apps
+You may be interested in some of the other apps in the Watchman family:
+- [Slack Watchman](https://github.com/PaperMtn/slack-watchman)
+- [GitHub Watchman](https://github.com/PaperMtn/github-watchman)
