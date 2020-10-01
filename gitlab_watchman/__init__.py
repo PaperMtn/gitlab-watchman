@@ -25,7 +25,7 @@ def validate_conf(path):
         return True
     if os.path.exists(path):
         with open(path) as yaml_file:
-            return yaml.safe_load(yaml_file).get('watchman')
+            return yaml.safe_load(yaml_file).get('gitlab_watchman')
 
 
 def find_variables(gitlab_connection, project_list):
@@ -172,6 +172,11 @@ def main():
     global OUTPUT_LOGGER
     try:
         init()
+
+        if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
+            print = OUTPUT_LOGGER.log_critical
+        else:
+            print = builtins.print
 
         parser = argparse.ArgumentParser(description=a.__summary__)
         required = parser.add_argument_group('required arguments')
