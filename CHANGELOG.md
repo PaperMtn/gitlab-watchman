@@ -1,4 +1,4 @@
-## 1.1.0 - 2020-11-x
+## 1.1.0 - 2020-11-14
 ### Fixed
 - Retry added for occasional Requests HTTPSConnectionPool error
 ### Added
