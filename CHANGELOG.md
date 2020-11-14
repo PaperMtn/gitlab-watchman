@@ -2,7 +2,7 @@
 ### Fixed
 - Retry added for occasional Requests HTTPSConnectionPool error
 ### Added
-- Version added to Stdout logging
+- Exact regex string match added to output from message searches
 
 ## 1.0.0 - 2020-10-01
 Release

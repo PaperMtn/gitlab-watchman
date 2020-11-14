@@ -20,6 +20,7 @@ class CSVLogger(object):
                 'committed_date',
                 'committer_name',
                 'committer_email',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name'
@@ -32,6 +33,7 @@ class CSVLogger(object):
                 'updated_at',
                 'due_date',
                 'start_date',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name'
@@ -49,6 +51,7 @@ class CSVLogger(object):
                 'author_username',
                 'due_date',
                 'confidential',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name',
@@ -60,6 +63,7 @@ class CSVLogger(object):
                 'basename',
                 'data',
                 'path',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name'
@@ -75,6 +79,7 @@ class CSVLogger(object):
                 'author_username',
                 'merge_status',
                 'url',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name',
@@ -86,6 +91,7 @@ class CSVLogger(object):
                 'basename',
                 'data',
                 'path',
+                'match_string',
                 'project_url',
                 'project_id',
                 'project_name'
