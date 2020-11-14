@@ -7,6 +7,8 @@ import time
 import requests
 import yaml
 from requests.exceptions import HTTPError
+from requests.packages.urllib3.util import Retry
+from requests.adapters import HTTPAdapter
 
 import gitlab_watchman.config as cfg
 import gitlab_watchman.logger as logger
@@ -19,7 +21,7 @@ class GitLabAPIClient(object):
         self.base_url = base_url.rstrip('\\')
         self.per_page = 100
         self.session = session = requests.session()
-        session.mount(self.base_url, requests.adapters.HTTPAdapter())
+        session.mount(self.base_url, HTTPAdapter(max_retries=Retry(connect=3, backoff_factor=1)))
         session.headers.update({'Authorization': 'Bearer {}'.format(self.token)})
 
     def make_request(self, url, params=None, data=None, method='GET', verify_ssl=True):
@@ -196,6 +198,7 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL
                     'committed_date': commit.get('committed_date'),
                     'committer_name': commit.get('committer_name'),
                     'committer_email': commit.get('committer_email'),
+                    'match_string': r.search(str(commit.get('message'))).group(0),
                     'project_url': project.get('web_url'),
                     'project_id': commit.get('project_id'),
                     'project_name': project.get('name')
@@ -237,6 +240,7 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
                     "updated_at": milestone.get('updated_at'),
                     "due_date": milestone.get('due_date'),
                     "start_date": milestone.get('start_date'),
+                    'match_string': r.search(str(milestone.get('description'))).group(0),
                     "project_url": project.get('web_url'),
                     "project_id": milestone.get('project_id'),
                     "project_name": project.get('name')
@@ -282,6 +286,7 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_
                     'author_username': issue.get('author').get('username'),
                     'due_date': issue.get('due_date'),
                     'confidential': issue.get('confidential'),
+                    'match_string': r.search(str(issue.get('description'))).group(0),
                     'project_url': project.get('web_url'),
                     'project_id': issue.get('project_id'),
                     'project_name': project.get('name'),
@@ -324,6 +329,7 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
                     'basename': blob.get('basename'),
                     'data': blob.get('data'),
                     'path': blob.get('path'),
+                    'match_string': r.search(str(blob.get('data'))).group(0),
                     'project_url': project.get('web_url'),
                     'project_id': blob.get('project_id'),
                     'project_name': project.get('name')
@@ -368,6 +374,7 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=
                     'author_username': merge_request.get('author').get('username'),
                     'merge_status': merge_request.get('merge_status'),
                     'url': merge_request.get('url'),
+                    'match_string': r.search(str(merge_request.get('description'))).group(0),
                     'project_url': project.get('web_url'),
                     'project_id': merge_request.get('id'),
                     'project_name': project.get('name'),
@@ -410,6 +417,7 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_T
                     'basename': blob.get('basename'),
                     'data': blob.get('data'),
                     'path': blob.get('path'),
+                    'match_string': r.search(str(blob.get('data'))).group(0),
                     'project_url': project.get('web_url'),
                     'project_id': blob.get('project_id'),
                     'project_name': project.get('name')
