@@ -28,7 +28,6 @@ For the following data:
 - Exposed tokens (Bearer tokens, access tokens, client_secret etc.)
 - S3 config files
 - Passwords in plaintext
-- CICD variables exposed publicly
 - and more
 
 #### Time based searching
@@ -159,7 +158,7 @@ GitLab Watchman will be installed as a global command, use as follows:
 usage: gitlab-watchman [-h] --timeframe {d,w,m,a} --output
                    {csv,file,stdout,stream} [--version] [--all] [--blobs]
                    [--commits] [--wiki-blobs] [--issues] [--merge-requests]
-                   [--variables] [--milestones] [--comments]
+                   [--milestones] [--comments]
 
 Monitoring GitLab for sensitive data shared publicly
 
@@ -172,7 +171,6 @@ optional arguments:
   --wiki-blobs          Search wiki blobs
   --issues              Search issues
   --merge-requests      Search merge requests
-  --variables           Search for publicly exposed CICD variables
   --milestones          Search milestones
   --comments            Search comments
 

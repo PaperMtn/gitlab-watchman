@@ -168,7 +168,7 @@ def convert_time(timestamp):
 def deduplicate(input_list):
     """Removes duplicates where results are returned by multiple queries"""
 
-    list_of_strings = [json.dumps(d, sort_keys=True) for d in input_list]
+    list_of_strings = [json.dumps(d) for d in input_list]
     list_of_strings = set(list_of_strings)
     return [json.loads(s) for s in list_of_strings]
 
@@ -199,9 +199,19 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL
                     'committer_name': commit.get('committer_name'),
                     'committer_email': commit.get('committer_email'),
                     'match_string': r.search(str(commit.get('message'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': commit.get('project_id'),
-                    'project_name': project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': commit.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
 
                 results.append(results_dict)
@@ -230,20 +240,30 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
         for milestone in milestone_list:
             r = re.compile(rule.get('pattern'))
             if convert_time(milestone.get('updated_at')) > (now - timeframe) and r.search(
-                    str(milestone['description'])):
+                    str(milestone.get('description'))):
                 project = gitlab.get_project(milestone.get('project_id'))
                 results_dict = {
-                    "milestone_id": milestone.get('id'),
-                    "title": milestone.get('title'),
-                    "description": milestone.get('decription'),
-                    "created_at": milestone.get('created_at'),
-                    "updated_at": milestone.get('updated_at'),
-                    "due_date": milestone.get('due_date'),
-                    "start_date": milestone.get('start_date'),
+                    'milestone_id': milestone.get('id'),
+                    'title': milestone.get('title'),
+                    'description': milestone.get('description'),
+                    'created_at': milestone.get('created_at'),
+                    'updated_at': milestone.get('updated_at'),
+                    'due_date': milestone.get('due_date'),
+                    'start_date': milestone.get('start_date'),
                     'match_string': r.search(str(milestone.get('description'))).group(0),
-                    "project_url": project.get('web_url'),
-                    "project_id": milestone.get('project_id'),
-                    "project_name": project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': milestone.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
 
                 results.append(results_dict)
@@ -287,11 +307,19 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_
                     'due_date': issue.get('due_date'),
                     'confidential': issue.get('confidential'),
                     'match_string': r.search(str(issue.get('description'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': issue.get('project_id'),
-                    'project_name': project.get('name'),
-                    'assignee_id': '',
-                    'assignee_username': ''
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': issue.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
                 if issue.get('assignee'):
                     results_dict['assignee_id'] = issue.get('assignee').get('id')
@@ -330,9 +358,19 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
                     'data': blob.get('data'),
                     'path': blob.get('path'),
                     'match_string': r.search(str(blob.get('data'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': blob.get('project_id'),
-                    'project_name': project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': blob.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
 
                 results.append(results_dict)
@@ -360,9 +398,9 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=
         print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"', '')))
         for merge_request in merge_request_list:
             r = re.compile(rule.get('pattern'))
-            if convert_time(merge_request['updated_at']) > (now - timeframe) and \
-                    r.search(str(merge_request['description'])):
-                project = gitlab.get_project(merge_request['project_id'])
+            if convert_time(merge_request.get('updated_at')) > (now - timeframe) and \
+                    r.search(str(merge_request.get('description'))):
+                project = gitlab.get_project(merge_request.get('project_id'))
                 results_dict = {
                     'merge_request_id': merge_request.get('id'),
                     'title': merge_request.get('title'),
@@ -375,11 +413,19 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=
                     'merge_status': merge_request.get('merge_status'),
                     'url': merge_request.get('url'),
                     'match_string': r.search(str(merge_request.get('description'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': merge_request.get('id'),
-                    'project_name': project.get('name'),
-                    'assignee_id': '',
-                    'assignee_username': ''
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': merge_request.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
                 if merge_request.get('assignee'):
                     results_dict['assignee_id'] = merge_request.get('assignee').get('id')
@@ -411,16 +457,27 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_T
         for blob in blob_list:
             r = re.compile(rule.get('pattern'))
             project = gitlab.get_project(blob.get('project_id'))
-            if convert_time(project.get('last_activity_at')) > (now - timeframe) and r.search(str(blob)):
+            if convert_time(project.get('last_activity_at')) > (now - timeframe) and r.search(str(blob.get('data'))):
                 results_dict = {
                     'blob_id': blob.get('id'),
                     'basename': blob.get('basename'),
                     'data': blob.get('data'),
                     'path': blob.get('path'),
                     'match_string': r.search(str(blob.get('data'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': blob.get('project_id'),
-                    'project_name': project.get('name')
+                    'last_activity_at': blob.get('last_activity_at'),
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': blob.get('project_id'),
+                        'project_name': project.get('name'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
 
                 results.append(results_dict)
@@ -431,28 +488,3 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_T
     else:
         print('No matches found after filtering')
 
-
-def get_public_variables(gitlab: GitLabAPIClient, log_handler, project_list):
-    """Searches all projects for public CICD variables"""
-
-    results = []
-    if isinstance(log_handler, logger.StdoutLogger):
-        print = log_handler.log_info
-    else:
-        print = builtins.print
-
-    for i in project_list:
-        if gitlab.get_variables(i.get('id')):
-            project = gitlab.get_project(i.get('id'))
-            results_dict = {
-                'project_id': project.get('id'),
-                'project_name': project.get('name'),
-                'repository_url': project.get('web_url'),
-                'last_activity': project.get('last_activity_at')
-            }
-            results.append(results_dict)
-    if results:
-        print('{} repositories with variables exposed'.format(len(results)))
-        return results
-    else:
-        print('No exposed variables found')
