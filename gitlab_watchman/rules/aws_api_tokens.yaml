@@ -20,6 +20,6 @@ test_cases:
   fail_cases:
   - AbCdEfGh1234567890AbAbAb+aAb1111111111+=AAA
 strings:
-- ASIA
-- AKIA
+- 'ASIA -(html|svg|png|jpeg|jpg)'
+- 'AKIA -(html|svg|png|jpeg|jpg)'
 pattern: "(?<![A-Za-z0-9\\/+=])[A-Za-z0-9\\/+=]{40}(?![A-Za-z0-9\\/+=])"

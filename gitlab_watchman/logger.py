@@ -23,7 +23,13 @@ class CSVLogger(object):
                 'match_string',
                 'project_url',
                 'project_id',
-                'project_name'
+                'project_name',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ],
             'milestones': [
                 'milestone_id',
@@ -36,7 +42,13 @@ class CSVLogger(object):
                 'match_string',
                 'project_url',
                 'project_id',
-                'project_name'
+                'project_name',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ],
             'issues': [
                 'issue_id',
@@ -56,7 +68,13 @@ class CSVLogger(object):
                 'project_id',
                 'project_name',
                 'assignee_id',
-                'assignee_username'
+                'assignee_username',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ],
             'wiki_blobs': [
                 'wiki_blob_id',
@@ -66,7 +84,13 @@ class CSVLogger(object):
                 'match_string',
                 'project_url',
                 'project_id',
-                'project_name'
+                'project_name',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ],
             'merge_requests': [
                 'merge_request_id',
@@ -84,7 +108,13 @@ class CSVLogger(object):
                 'project_id',
                 'project_name',
                 'assignee_id',
-                'assignee_username'
+                'assignee_username',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ],
             'blobs': [
                 'blob_id',
@@ -94,13 +124,13 @@ class CSVLogger(object):
                 'match_string',
                 'project_url',
                 'project_id',
-                'project_name'
-            ],
-            'variables': [
-                'project_id',
-                'project_name'
-                'repository_url',
-                'last_activity'
+                'project_name',
+                'namespace_id',
+                'name',
+                'kind',
+                'full_path',
+                'parent_id',
+                'web_url'
             ]
         }
 

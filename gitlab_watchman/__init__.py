@@ -28,18 +28,6 @@ def validate_conf(path):
             return yaml.safe_load(yaml_file).get('gitlab_watchman')
 
 
-def find_variables(gitlab_connection, project_list):
-    if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
-        print = OUTPUT_LOGGER.log_info
-    else:
-        print = builtins.print
-
-    print(colored('Searching for publicly exposed CICD variables', 'magenta'))
-    variables = gitlab.get_public_variables(gitlab_connection, OUTPUT_LOGGER, project_list)
-
-    return variables
-
-
 def search(gitlab_connection, rule, tf, scope):
     if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
         print = OUTPUT_LOGGER.log_info
@@ -199,8 +187,6 @@ def main():
                             help='Search issues')
         parser.add_argument('--merge-requests', dest='merge', action='store_true',
                             help='Search merge requests')
-        parser.add_argument('--variables', dest='variables', action='store_true',
-                            help='Search for publicly exposed CICD variables')
         parser.add_argument('--milestones', dest='milestones', action='store_true',
                             help='Search milestones')
 
@@ -212,7 +198,6 @@ def main():
         wiki = args.wiki
         issues = args.issues
         merge = args.merge
-        variables = args.variables
         milestones = args.milestones
         logging_type = args.logging_type
 
@@ -315,15 +300,6 @@ def main():
                     search(connection, rule, tf, 'wiki_blobs')
                 if 'milestones' in rule.get('scope'):
                     search(connection, rule, tf, 'milestones')
-            print(colored('Enumerating projects', 'yellow'))
-            projects = connection.get_all_projects()
-            output_vars = find_variables(connection, projects)
-            if output_vars:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_cicd_', 'variables', output_vars)
-                else:
-                    for log_data in output_vars:
-                        OUTPUT_LOGGER.log_notification(log_data, 'variables', detect_type='cicd variables', severity=90)
         else:
             if blobs:
                 print(colored('Searching blobs', 'magenta'))
@@ -355,18 +331,6 @@ def main():
                 for rule in rules_list:
                     if 'milestones' in rule.get('scope'):
                         search(connection, rule, tf, 'milestones')
-            if variables:
-                print(colored('Enumerating projects', 'yellow'))
-                projects = connection.get_all_projects()
-                output_vars = find_variables(connection, projects)
-                if output_vars:
-                    if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                        OUTPUT_LOGGER.write_csv('exposed_cicd_', 'variables', output_vars)
-                    else:
-                        for log_data in output_vars:
-                            OUTPUT_LOGGER.log_notification(log_data, 'variables', detect_type='cicd variables',
-                                                           severity=90)
-
         print(colored('++++++Audit completed++++++', 'green'))
 
         deinit()
