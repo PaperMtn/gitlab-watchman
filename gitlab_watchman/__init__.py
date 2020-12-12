@@ -40,15 +40,10 @@ def search(gitlab_connection, rule, tf, scope):
 
             blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if blobs:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'blobs',
-                                            blobs)
-                else:
-                    for log_data in blobs:
-                        OUTPUT_LOGGER.log_notification(log_data, 'blobs', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in blobs:
+                    OUTPUT_LOGGER.log_notification(log_data, 'blobs', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
 
         if scope == 'commits':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
@@ -56,15 +51,10 @@ def search(gitlab_connection, rule, tf, scope):
 
             commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if commits:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'commits',
-                                            commits)
-                else:
-                    for log_data in commits:
-                        OUTPUT_LOGGER.log_notification(log_data, 'commits', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in commits:
+                    OUTPUT_LOGGER.log_notification(log_data, 'commits', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
 
         if scope == 'issues':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
@@ -72,15 +62,10 @@ def search(gitlab_connection, rule, tf, scope):
 
             issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if issues:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'issues',
-                                            issues)
-                else:
-                    for log_data in issues:
-                        OUTPUT_LOGGER.log_notification(log_data, 'issues', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in issues:
+                    OUTPUT_LOGGER.log_notification(log_data, 'issues', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
 
         if scope == 'wiki_blobs':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
@@ -88,15 +73,10 @@ def search(gitlab_connection, rule, tf, scope):
 
             wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if wiki_blobs:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'wiki_blobs',
-                                            wiki_blobs)
-                else:
-                    for log_data in wiki_blobs:
-                        OUTPUT_LOGGER.log_notification(log_data, 'wiki_blobs', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in wiki_blobs:
+                    OUTPUT_LOGGER.log_notification(log_data, 'wiki_blobs', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
 
         if scope == 'merge_requests':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
@@ -104,30 +84,20 @@ def search(gitlab_connection, rule, tf, scope):
 
             merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if merge_requests:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'merge_requests',
-                                            merge_requests)
-                else:
-                    for log_data in merge_requests:
-                        OUTPUT_LOGGER.log_notification(log_data, 'merge_requests', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in merge_requests:
+                    OUTPUT_LOGGER.log_notification(log_data, 'merge_requests', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
 
         if scope == 'milestones':
             print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
                                                           'milestones'), 'yellow'))
             milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule, tf)
             if milestones:
-                if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                    OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]),
-                                            'milestones',
-                                            milestones)
-                else:
-                    for log_data in milestones:
-                        OUTPUT_LOGGER.log_notification(log_data, 'milestones', rule.get('meta').get('name'),
-                                                       rule.get('meta').get('severity'))
-                    print('Results output to log')
+                for log_data in milestones:
+                    OUTPUT_LOGGER.log_notification(log_data, 'milestones', rule.get('meta').get('name'),
+                                                   rule.get('meta').get('severity'))
+                print('Results output to log')
     except Exception as e:
         if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
             print = OUTPUT_LOGGER.log_critical
@@ -171,8 +141,8 @@ def main():
         required.add_argument('--timeframe', choices=['d', 'w', 'm', 'a'], dest='time',
                               help='How far back to search: d = 24 hours w = 7 days, m = 30 days, a = all time',
                               required=True)
-        required.add_argument('--output', choices=['csv', 'file', 'stdout', 'stream'], dest='logging_type',
-                              help='Where to send results', required=True)
+        required.add_argument('--output', choices=['file', 'stdout', 'stream'], dest='logging_type',
+                              help='Where to send results')
         parser.add_argument('--version', action='version',
                             version='gitlab-watchman {}'.format(a.__version__))
         parser.add_argument('--all', dest='everything', action='store_true',
@@ -244,10 +214,11 @@ def main():
                 else:
                     raise Exception("JSON TCP stream selected with no config")
             else:
-                OUTPUT_LOGGER = logger.CSVLogger()
+                print('CSV logging is no longer supported, defaulting to Stdout')
+                OUTPUT_LOGGER = logger.StdoutLogger()
         else:
-            print('No logging option selected, defaulting to CSV')
-            OUTPUT_LOGGER = logger.CSVLogger()
+            print('No logging option selected, defaulting to Stdout')
+            OUTPUT_LOGGER = logger.StdoutLogger()
 
         now = int(time.time())
         today = date.today().strftime('%Y-%m-%d')

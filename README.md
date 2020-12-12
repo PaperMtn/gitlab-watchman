@@ -78,16 +78,15 @@ More information about rules, and how you can add your own, is in the file `docs
 ### Logging
 
 GitLab Watchman gives the following logging options:
-- CSV
 - Log file
 - Stdout
 - TCP stream
 
-When using CSV logging, searches for rules are returned in separate CSV files, for all other methods of logging, results are output in JSON format, perfect for ingesting into a SIEM or other log analysis platform.
+Results are output in JSON format, perfect for ingesting into a SIEM or other log analysis platform.
 
 For file and TCP stream logging, configuration options need to be passed via `.conf` file or environment variable. See the file `docs/logging.md` for instructions on how to set it up.
 
-If no logging option is given, GitLab Watchman defaults to CSV logging.
+If no logging option is given, GitLab Watchman defaults to Stdout logging.
 
 ## Requirements
 
@@ -157,7 +156,7 @@ Or via source
 GitLab Watchman will be installed as a global command, use as follows:
 ```
 usage: gitlab-watchman [-h] --timeframe {d,w,m,a} --output
-                   {csv,file,stdout,stream} [--version] [--all] [--blobs]
+                   {file,stdout,stream} [--version] [--all] [--blobs]
                    [--commits] [--wiki-blobs] [--issues] [--merge-requests]
                    [--milestones] [--comments]
 
@@ -179,12 +178,12 @@ required arguments:
   --timeframe {d,w,m,a}
                         How far back to search: d = 24 hours w = 7 days, m =
                         30 days, a = all time
-  --output {csv,file,stdout,stream}
+  --output {file,stdout,stream}
                         Where to send results
 
   ```
 
-You can run GitLab Watchman to look for everything, and output to default CSV:
+You can run GitLab Watchman to look for everything, and output to default Stdout:
 
 `gitlab-watchman --timeframe a --all`
 
