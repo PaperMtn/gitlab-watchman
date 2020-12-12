@@ -20,9 +20,9 @@ test_cases:
   fail_cases:
   - API_KEY = xoxb_slack_key12
 strings:
-- xoxb
-- xoxa
-- xoxp
-- xoxr
-- xoxs
+- 'xoxb -(svg|png|jpeg|jpg)'
+- 'xoxa -(svg|png|jpeg|jpg)'
+- 'xoxp -(svg|png|jpeg|jpg)'
+- 'xoxr -(svg|png|jpeg|jpg)'
+- 'xoxs -(svg|png|jpeg|jpg)'
 pattern: xox[baprs]([0-9a-zA-Z-]{10,72})

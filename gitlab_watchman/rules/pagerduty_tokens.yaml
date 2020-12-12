@@ -1,0 +1,25 @@
+---
+filename: pagerduty_tokens.yaml
+enabled: true
+meta:
+  name: PagerDuty Tokens
+  author: PaperMtn
+  date: '2020-12-07'
+  description: Detects exposed PagerDuty tokens
+  severity: '70'
+scope:
+- blobs
+- commits
+- milestones
+- wiki_blobs
+- issues
+- merge_requests
+test_cases:
+  match_cases:
+  - 'PagerDuty_Token:"xxxxxxxaaaaaaaccccccceeeeeeeeeee"'
+  fail_cases:
+  - 'PagerDuty_Token:"xxxxxxxaaaaaaaccccccceeeeeeeeeeeaaafff"'
+strings:
+- api.pagerduty.com
+- ocado-tech-osp.pagerduty
+pattern: '[''|\"][0-9A-Za-z_]{32}[''|\"]'

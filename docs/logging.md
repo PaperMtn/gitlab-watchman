@@ -1,14 +1,8 @@
 # Logging
 GitLab Watchman gives the following logging options:
-- CSV
 - Log file
 - Stdout
 - TCP stream
-
-## CSV logging
-CSV logging is the default logging option if no other output method is given at runtime.
-
-Results for each search are output as CSV files in your current working directory.
 
 ## JSON formatted logging
 All other logging options output their logs in JSON format. Here is an example:
@@ -16,7 +10,7 @@ All other logging options output their logs in JSON format. Here is an example:
 ```json
 {"localtime": "2020-01-01 00:00:00,000", "level": "NOTIFY", "source": "GitLab Watchman", "scope": "blobs", "type": "Interesting Potentially Sensitive Files", "severity": "70", "detection": {"basename": "vendor/k8s.io/kubernetes/vendor/github.com/abbot/go-http-auth/test", "blob_id": null, "data": ".........", "path": "westeros_inc/lannister_docs/my.htpasswd", "project_id": 1001, "project_name": "westeros_inc", "project_url": "https://gitlab.westeros.inc/...."}}
 ```
-This should contain all of the information you require to ingest these logs into a SIEM, or other log analysis platform.
+This should contain all the information you require to ingest these logs into a SIEM, or other log analysis platform.
 
 
 ### File logging

@@ -9,6 +9,7 @@ import yaml
 from requests.exceptions import HTTPError
 from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
+from urllib.parse import quote
 
 import gitlab_watchman.config as cfg
 import gitlab_watchman.logger as logger
@@ -51,8 +52,11 @@ class GitLabAPIClient(object):
         except Exception as e:
             print(e)
 
-    def get_user_info(self, user_id):
+    def get_user_by_id(self, user_id):
         return self.make_request('users/{}'.format(user_id)).json()
+
+    def get_user_by_username(self, username):
+        return self.make_request('users?username={}'.format(username)).json()
 
     def get_token_user(self):
         return self.make_request('user').json()
@@ -67,7 +71,17 @@ class GitLabAPIClient(object):
         return self.make_request('projects/{}/variables'.format(project_id)).json()
 
     def get_project_members(self, project_id):
-        return self.global_search('projects/{}/members'.format(project_id))
+        return self.make_request('projects/{}/members'.format(project_id)).json()
+
+    def get_file(self, project_id, path, ref):
+        path = ''.join((quote(path, safe=''), '?ref=', ref))
+        return self.make_request('projects/{}/repository/files/{}'.format(project_id, path)).json()
+
+    def get_group_members(self, project_id):
+        return self.make_request('groups/{}/members'.format(project_id)).json()
+
+    def get_commit(self, project_id, commit_id):
+        return self.make_request('projects/{}/repository/commits/{}'.format(project_id, commit_id)).json()
 
     def global_search(self, url, search_term='', search_scope=''):
 
@@ -161,16 +175,47 @@ def initiate_gitlab_connection():
 def convert_time(timestamp):
     """Convert ISO 8601 timestamp to epoch """
 
-    pattern = '%Y-%m-%dT%H:%M:%S.%fZ'
+    pattern = '%Y-%m-%dT%H:%M:%S.%f%z'
     return int(time.mktime(time.strptime(timestamp, pattern)))
 
 
 def deduplicate(input_list):
     """Removes duplicates where results are returned by multiple queries"""
 
-    list_of_strings = [json.dumps(d, sort_keys=True) for d in input_list]
+    list_of_strings = [json.dumps(d) for d in input_list]
     list_of_strings = set(list_of_strings)
     return [json.loads(s) for s in list_of_strings]
+
+
+def find_group_owners(group_members):
+    """Return all users who are both active and group Owners"""
+
+    member_list = []
+    for user in group_members:
+        if user.get('state') == 'active' and user.get('access_level') == 50:
+            member_list.append({
+                'user_id': user.get('id'),
+                'name': user.get('name'),
+                'username': user.get('username'),
+                'access_level': 'Owner'
+            })
+
+    return member_list
+
+
+def find_user_owner(user_list):
+    """Return user who owns a namespace"""
+
+    owner_list = []
+    for user in user_list:
+        owner_list.append({
+            'user_id': user.get('id'),
+            'name': user.get('name'),
+            'username': user.get('username'),
+            'state': user.get('state')
+        })
+
+    return owner_list
 
 
 def search_commits(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_TIME):
@@ -199,10 +244,31 @@ def search_commits(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL
                     'committer_name': commit.get('committer_name'),
                     'committer_email': commit.get('committer_email'),
                     'match_string': r.search(str(commit.get('message'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': commit.get('project_id'),
-                    'project_name': project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': commit.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -230,21 +296,42 @@ def search_milestones(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
         for milestone in milestone_list:
             r = re.compile(rule.get('pattern'))
             if convert_time(milestone.get('updated_at')) > (now - timeframe) and r.search(
-                    str(milestone['description'])):
+                    str(milestone.get('description'))):
                 project = gitlab.get_project(milestone.get('project_id'))
                 results_dict = {
-                    "milestone_id": milestone.get('id'),
-                    "title": milestone.get('title'),
-                    "description": milestone.get('decription'),
-                    "created_at": milestone.get('created_at'),
-                    "updated_at": milestone.get('updated_at'),
-                    "due_date": milestone.get('due_date'),
-                    "start_date": milestone.get('start_date'),
+                    'milestone_id': milestone.get('id'),
+                    'title': milestone.get('title'),
+                    'description': milestone.get('description'),
+                    'created_at': milestone.get('created_at'),
+                    'updated_at': milestone.get('updated_at'),
+                    'due_date': milestone.get('due_date'),
+                    'start_date': milestone.get('start_date'),
                     'match_string': r.search(str(milestone.get('description'))).group(0),
-                    "project_url": project.get('web_url'),
-                    "project_id": milestone.get('project_id'),
-                    "project_name": project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': milestone.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -287,15 +374,35 @@ def search_issues(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_
                     'due_date': issue.get('due_date'),
                     'confidential': issue.get('confidential'),
                     'match_string': r.search(str(issue.get('description'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': issue.get('project_id'),
-                    'project_name': project.get('name'),
-                    'assignee_id': '',
-                    'assignee_username': ''
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': issue.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
                 if issue.get('assignee'):
                     results_dict['assignee_id'] = issue.get('assignee').get('id')
                     results_dict['assignee_username'] = issue.get('assignee').get('username')
+
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -329,11 +436,33 @@ def search_wiki_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.
                     'basename': blob.get('basename'),
                     'data': blob.get('data'),
                     'path': blob.get('path'),
+                    'ref_branch': blob.get('ref'),
                     'match_string': r.search(str(blob.get('data'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': blob.get('project_id'),
-                    'project_name': project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': blob.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -360,9 +489,9 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=
         print('{} merge requests found matching: {}'.format(len(merge_request_list), query.replace('"', '')))
         for merge_request in merge_request_list:
             r = re.compile(rule.get('pattern'))
-            if convert_time(merge_request['updated_at']) > (now - timeframe) and \
-                    r.search(str(merge_request['description'])):
-                project = gitlab.get_project(merge_request['project_id'])
+            if convert_time(merge_request.get('updated_at')) > (now - timeframe) and \
+                    r.search(str(merge_request.get('description'))):
+                project = gitlab.get_project(merge_request.get('project_id'))
                 results_dict = {
                     'merge_request_id': merge_request.get('id'),
                     'title': merge_request.get('title'),
@@ -375,15 +504,35 @@ def search_merge_requests(gitlab: GitLabAPIClient, log_handler, rule, timeframe=
                     'merge_status': merge_request.get('merge_status'),
                     'url': merge_request.get('url'),
                     'match_string': r.search(str(merge_request.get('description'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': merge_request.get('id'),
-                    'project_name': project.get('name'),
-                    'assignee_id': '',
-                    'assignee_username': ''
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': merge_request.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
                 if merge_request.get('assignee'):
                     results_dict['assignee_id'] = merge_request.get('assignee').get('id')
                     results_dict['assignee_username'] = merge_request.get('assignee').get('username')
+
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -411,17 +560,42 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_T
         for blob in blob_list:
             r = re.compile(rule.get('pattern'))
             project = gitlab.get_project(blob.get('project_id'))
-            if convert_time(project.get('last_activity_at')) > (now - timeframe) and r.search(str(blob)):
+            file = gitlab.get_file(blob.get('project_id'), blob.get('path'), blob.get('ref'))
+            commit = gitlab.get_commit(blob.get('project_id'), file.get('last_commit_id'))
+            if convert_time(commit.get('committed_date')) > (now - timeframe) and r.search(str(blob.get('data'))):
                 results_dict = {
                     'blob_id': blob.get('id'),
                     'basename': blob.get('basename'),
                     'data': blob.get('data'),
                     'path': blob.get('path'),
+                    'ref_branch': blob.get('ref'),
+                    'commited_date': commit.get('committed_date'),
                     'match_string': r.search(str(blob.get('data'))).group(0),
-                    'project_url': project.get('web_url'),
-                    'project_id': blob.get('project_id'),
-                    'project_name': project.get('name')
+                    'project': {
+                        'project_url': project.get('web_url'),
+                        'project_id': blob.get('project_id'),
+                        'project_name': project.get('name'),
+                        'last_activity_at': project.get('last_activity_at'),
+                        'namespace': {
+                            'namespace_id': project.get('namespace').get('id'),
+                            'name': project.get('namespace').get('name'),
+                            'kind': project.get('namespace').get('kind'),
+                            'full_path': project.get('namespace').get('full_path'),
+                            'parent_id': project.get('namespace').get('parent_id'),
+                            'web_url': project.get('namespace').get('web_url')
+                        }
+                    }
                 }
+                if project.get('namespace').get('kind') == 'group':
+                    group_members = gitlab.get_group_members(project.get('namespace').get('id'))
+                    owners = find_group_owners(group_members)
+                    if owners:
+                        results_dict['project']['namespace']['members'] = owners
+                elif project.get('namespace').get('kind') == 'user':
+                    namespace_user = gitlab.get_user_by_username(project.get('namespace').get('full_path'))
+                    user = find_user_owner(namespace_user)
+                    if user:
+                        results_dict['project']['namespace']['owner'] = user
 
                 results.append(results_dict)
     if results:
@@ -430,29 +604,3 @@ def search_blobs(gitlab: GitLabAPIClient, log_handler, rule, timeframe=cfg.ALL_T
         return results
     else:
         print('No matches found after filtering')
-
-
-def get_public_variables(gitlab: GitLabAPIClient, log_handler, project_list):
-    """Searches all projects for public CICD variables"""
-
-    results = []
-    if isinstance(log_handler, logger.StdoutLogger):
-        print = log_handler.log_info
-    else:
-        print = builtins.print
-
-    for i in project_list:
-        if gitlab.get_variables(i.get('id')):
-            project = gitlab.get_project(i.get('id'))
-            results_dict = {
-                'project_id': project.get('id'),
-                'project_name': project.get('name'),
-                'repository_url': project.get('web_url'),
-                'last_activity': project.get('last_activity_at')
-            }
-            results.append(results_dict)
-    if results:
-        print('{} repositories with variables exposed'.format(len(results)))
-        return results
-    else:
-        print('No exposed variables found')
