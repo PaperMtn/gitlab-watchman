@@ -1,3 +1,13 @@
+## 1.3.0 - 2020-11-16
+###Added:
+- Add information about the namespaces a project is in
+- Add owner of that namespace, for groups and users
+- Time based searching now looks at the time a file was committed, not when a project was active, which greatly reduces multiple of the same detection because a project is active.
+- Rules added:
+    - SSH private keys 
+    - Mastercard datacash tokens
+    - Heroku tokens
+    - PagerDuty tokens
 ## 1.2.0 - 2020-11-16
 ###Added:
 - More data on namespaces added to logs

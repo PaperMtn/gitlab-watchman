@@ -1,0 +1,26 @@
+---
+filename: mastercard_datacash_tokens.yaml
+enabled: true
+meta:
+  name: MasterCard DataCash
+  author: PaperMtn
+  date: '2020-12-01'
+  description: Detects exposed MasterCard DataCash credentials
+  severity: '70'
+scope:
+- blobs
+- commits
+- milestones
+- wiki_blobs
+- issues
+- merge_requests
+test_cases:
+  match_cases:
+  - 01234567-89ab-cdef-0123-456789abcdef
+  fail_cases:
+  - 2345678-89ab-cdef-0123-456789abcdef
+strings:
+- id.heroku.com
+- api.heroku.com
+- heroku
+pattern: '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}'

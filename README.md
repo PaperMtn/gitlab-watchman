@@ -27,6 +27,7 @@ For the following data:
 - Private keys (SSH, PGP, any other misc private key)
 - Exposed tokens (Bearer tokens, access tokens, client_secret etc.)
 - S3 config files
+- Tokens for services such as Heroku, PayPal and more
 - Passwords in plaintext
 - and more
 
