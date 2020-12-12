@@ -1,4 +1,4 @@
-## 1.3.0 - 2020-11-16
+## 1.3.0 - 2020-12-12
 ###Added:
 - Add more information about the namespaces a project is in to logs
 - Added details owner of that namespace, for groups and users
