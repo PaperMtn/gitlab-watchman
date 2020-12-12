@@ -13,12 +13,12 @@
 - Enhanced logging that includes nested information, such as namespace owners, means that CSV logging is no longer practical. CSV logging has been removed and JSON via STDOUT is now the default option. 
 
 ## 1.2.0 - 2020-11-16
-###Added:
+### Added:
 - More data on namespaces added to logs
 - Better search queries for existing rules to filter out false positives
-###Removed:
+### Removed:
 - CICD variable search no longer works due to GitLab API now only allowing owners of a project to search it for variables. It has been removed.
-###Fixed:
+### Fixed:
 - Bug on outputting match string for blobs/wiki-blobs
 
 ## 1.1.0 - 2020-11-14
