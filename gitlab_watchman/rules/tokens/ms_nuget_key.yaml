@@ -16,9 +16,9 @@ scope:
 - merge_requests
 test_cases:
   match_cases:
-  - SKaaaaaaaa413272ec0a65f2fd1b14ab10
+  - nuget setapikey 4003d786-aaaa-bbbb-cccc-c4f3e8ef9b3a
   fail_cases:
-  - SK_TEST_6f9cfc9d413272ec0a65f2fd1b14ab10
+  - nuget setapikey 4003d786-xxxx-bbbb-cccc-c4f3e8ef9b3a
 strings:
 - api.nuget.org
 - nuget_*
