@@ -33,70 +33,16 @@ def search(gitlab_connection, rule, tf, scope):
     else:
         print = builtins.print
     try:
-        if scope == 'blobs':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'blobs'), 'yellow'))
+        print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'), scope), 'yellow'))
 
-            blobs = gitlab.search_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if blobs:
-                for log_data in blobs:
-                    OUTPUT_LOGGER.log_notification(log_data, 'blobs', rule.get('meta').get('name'),
+        results = gitlab.search(gitlab_connection, OUTPUT_LOGGER, rule, scope, tf)
+        if results:
+            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
+                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]), scope, results)
+            else:
+                for log_data in results:
+                    OUTPUT_LOGGER.log_notification(log_data, scope, rule.get('meta').get('name'),
                                                    rule.get('meta').get('severity'))
-                print('Results output to log')
-
-        if scope == 'commits':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'commits'), 'yellow'))
-
-            commits = gitlab.search_commits(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if commits:
-                for log_data in commits:
-                    OUTPUT_LOGGER.log_notification(log_data, 'commits', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
-
-        if scope == 'issues':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'issues'), 'yellow'))
-
-            issues = gitlab.search_issues(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if issues:
-                for log_data in issues:
-                    OUTPUT_LOGGER.log_notification(log_data, 'issues', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
-
-        if scope == 'wiki_blobs':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'wiki blobs'), 'yellow'))
-
-            wiki_blobs = gitlab.search_wiki_blobs(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if wiki_blobs:
-                for log_data in wiki_blobs:
-                    OUTPUT_LOGGER.log_notification(log_data, 'wiki_blobs', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
-
-        if scope == 'merge_requests':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'merge requests'), 'yellow'))
-
-            merge_requests = gitlab.search_merge_requests(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if merge_requests:
-                for log_data in merge_requests:
-                    OUTPUT_LOGGER.log_notification(log_data, 'merge_requests', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
-
-        if scope == 'milestones':
-            print(colored('Searching for {} in {}'.format(rule.get('meta').get('name'),
-                                                          'milestones'), 'yellow'))
-            milestones = gitlab.search_milestones(gitlab_connection, OUTPUT_LOGGER, rule, tf)
-            if milestones:
-                for log_data in milestones:
-                    OUTPUT_LOGGER.log_notification(log_data, 'milestones', rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
-                print('Results output to log')
     except Exception as e:
         if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
             print = OUTPUT_LOGGER.log_critical

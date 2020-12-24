@@ -1,6 +1,8 @@
 ## 1.4.0 - 2020-12-24
 ### Added:
 - Refactor of rules into directories for easier management
+- Multiprocessing implemented for searching for matches. GitLab Watchman now splits regex filtering between the cores available on the device, meaning the more cores you have, the faster searching should run.
+- Handling for GitLab API rate limiting, backing off when the rate limit is hit. The rate limit may be more likely to come into effect with multiprocessing
 - Rules added to search for:
   - Cloudflare tokens
   - Facebook API tokens
