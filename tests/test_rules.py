@@ -8,12 +8,14 @@ RULES_PATH = (Path(__file__).parents[1] / 'gitlab_watchman/rules').resolve()
 
 def load_rules():
     rules = []
-    for file in os.scandir(RULES_PATH):
-        if file.name.endswith('.yaml'):
-            with open(file) as yaml_file:
-                rule = yaml.safe_load(yaml_file)
-                if rule.get('enabled'):
-                    rules.append(rule)
+    for root, dirs, files in os.walk(RULES_PATH):
+        for rule in files:
+            rule_path = (Path(root) / rule).resolve()
+            if rule_path.name.endswith('.yaml'):
+                with open(rule_path) as yaml_file:
+                    rule = yaml.safe_load(yaml_file)
+                    if rule.get('enabled'):
+                        rules.append(rule)
     return rules
 
 
