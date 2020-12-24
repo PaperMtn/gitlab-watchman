@@ -13,7 +13,7 @@
   - Stripe API tokens
   - Twilio API tokens
   - Microsoft NuGet keys
-  
+
 
 ## 1.3.0 - 2020-12-12
 ### Added:
