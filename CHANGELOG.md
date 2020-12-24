@@ -1,16 +1,16 @@
 ## 1.3.0 - 2020-12-12
-###Added:
+### Added:
 - Add more information about the namespaces a project is in to logs
 - Added details owner of that namespace, for groups and users
 - Time based searching now looks at the time a file was committed, not when a project was active, which greatly reduces multiples of the same detection because a project is active but a file has not been modified.
 - Rules added:
-    - SSH private keys 
+    - SSH private keys
     - Mastercard datacash tokens
     - Heroku tokens
     - PagerDuty tokens
-  
-###Removed:
-- Enhanced logging that includes nested information, such as namespace owners, means that CSV logging is no longer practical. CSV logging has been removed and JSON via STDOUT is now the default option. 
+
+### Removed:
+- Enhanced logging that includes nested information, such as namespace owners, means that CSV logging is no longer practical. CSV logging has been removed and JSON via STDOUT is now the default option.
 
 ## 1.2.0 - 2020-11-16
 ###Added:

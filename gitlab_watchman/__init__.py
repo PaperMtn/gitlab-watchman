@@ -13,7 +13,6 @@ import gitlab_watchman.__about__ as a
 import gitlab_watchman.config as cfg
 import gitlab_watchman.logger as logger
 
-
 RULES_PATH = (Path(__file__).parent / 'rules').resolve()
 OUTPUT_LOGGER = ''
 
@@ -108,14 +107,18 @@ def search(gitlab_connection, rule, tf, scope):
 
 
 def load_rules():
+    """Import YAML rules"""
+
     rules = []
     try:
-        for file in os.scandir(RULES_PATH):
-            if file.name.endswith('.yaml'):
-                with open(file) as yaml_file:
-                    rule = yaml.safe_load(yaml_file)
-                    if rule.get('enabled'):
-                        rules.append(rule)
+        for root, dirs, files in os.walk(RULES_PATH):
+            for rule in files:
+                rule_path = (Path(root) / rule).resolve()
+                if rule_path.name.endswith('.yaml'):
+                    with open(rule_path) as yaml_file:
+                        rule = yaml.safe_load(yaml_file)
+                        if rule.get('enabled'):
+                            rules.append(rule)
         return rules
     except Exception as e:
         if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
