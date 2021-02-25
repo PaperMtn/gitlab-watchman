@@ -37,12 +37,8 @@ def search(gitlab_connection, rule, tf, scope):
 
         results = gitlab.search(gitlab_connection, OUTPUT_LOGGER, rule, scope, tf)
         if results:
-            if isinstance(OUTPUT_LOGGER, logger.CSVLogger):
-                OUTPUT_LOGGER.write_csv('exposed_{}'.format(rule.get('filename').split('.')[0]), scope, results)
-            else:
-                for log_data in results:
-                    OUTPUT_LOGGER.log_notification(log_data, scope, rule.get('meta').get('name'),
-                                                   rule.get('meta').get('severity'))
+            for log_data in results:
+                OUTPUT_LOGGER.log_notification(log_data, scope, rule.get('meta').get('name'), rule.get('meta').get('severity'))
     except Exception as e:
         if isinstance(OUTPUT_LOGGER, logger.StdoutLogger):
             print = OUTPUT_LOGGER.log_critical
