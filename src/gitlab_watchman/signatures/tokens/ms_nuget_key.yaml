@@ -1,0 +1,28 @@
+---
+filename: ms_nuget_key.yaml
+enabled: true
+meta:
+  name: Microsoft NuGet Keys
+  author: PaperMtn
+  date: '2020-12-24'
+  description: Detects exposed Microsoft NuGet Keys
+  severity: '70'
+scope:
+- blobs
+- commits
+- milestones
+- wiki_blobs
+- issues
+- merge_requests
+- notes
+- snippet_titles
+test_cases:
+  match_cases:
+  - SKaaaaaaaa413272ec0a65f2fd1b14ab10
+  fail_cases:
+  - SK_TEST_6f9cfc9d413272ec0a65f2fd1b14ab10
+strings:
+- api.nuget.org
+- nuget_*
+- nuget
+pattern: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'

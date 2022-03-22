@@ -1,0 +1,30 @@
+---
+filename: mastercard_datacash_tokens.yaml
+enabled: true
+meta:
+  name: MasterCard DataCash Tokens
+  author: PaperMtn
+  date: '2020-12-01'
+  description: Detects exposed MasterCard DataCash credentials
+  severity: '70'
+scope:
+- blobs
+- commits
+- milestones
+- wiki_blobs
+- issues
+- merge_requests
+- notes
+- snippet_titles
+test_cases:
+  match_cases:
+  - '99000000'
+  - '21000000'
+  - '88123123'
+  fail_cases:
+  - '90000000'
+  - '89000000'
+strings:
+- 'vTID -(svg|png|jpeg)'
+- 'datacash -(svg|png|jpeg)'
+pattern: '([99]{2}|[88]{2}|[21]{2})[0-9]{6}'

@@ -1,3 +1,18 @@
+## 2.0.0 - 2022-03-22
+### Added:
+- Complete rewrite of the codebase to make searching faster and more efficient.
+  - More modern packaging and distribution.
+- Logs now include more data
+- New scopes for finding exposed data in:
+  - notes
+  - snippets
+- Additional signatures added to find more leaked data
+
+### Removed:
+- Logging to file and TCP stream - logs to stdout like a true 12 factor app. Reroute stdout as you see fit.
+- .conf file for configuration options. Pass the environment variables `GITLAB_WATCHMAN_TOKEN` and `GITLAB_WATCHMAN_URL`
+
+
 ## 1.4.0 - 2020-12-24
 ### Added:
 - Refactor of rules into directories for easier management
@@ -18,7 +33,7 @@
 ## 1.3.0 - 2020-12-12
 ### Added:
 - Add more information about the namespaces a project is in to logs
-- Added details owner of that namespace, for groups and users
+- Added owner details of that namespace, for groups and users
 - Time based searching now looks at the time a file was committed, not when a project was active, which greatly reduces multiples of the same detection because a project is active but a file has not been modified.
 - Rules added:
     - SSH private keys
