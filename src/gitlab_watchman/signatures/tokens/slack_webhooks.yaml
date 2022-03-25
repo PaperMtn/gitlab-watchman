@@ -8,20 +8,20 @@ meta:
   description: Detects exposed Slack webhooks
   severity: '40'
 scope:
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
+  - blobs
+  - commits
+  - milestones
+  - wiki_blobs
+  - issues
+  - merge_requests
+  - notes
+  - snippet_titles
 test_cases:
   match_cases:
-  - https://hooks.slack.com/services/T01010101/Babababab/aabab1212abab1212abababa
+    - https://hooks.slack.com/services/T01010101/Babababab/aabab1212abab1212abababa
   fail_cases:
-  - https://hooks.slack.com/
-  - http://hooks.slack.com/
+    - https://hooks.slack.com/
+    - http://hooks.slack.com/
 strings:
-- hooks.slack.com
+  - hooks.slack.com
 pattern: https://hooks.slack.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class WikiBlob(object):
     """ Class that defines WikiBlob objects for GitLab blobs"""

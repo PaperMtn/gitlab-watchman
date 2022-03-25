@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Commit(object):
     """ Class that defines File objects for GitLab files"""

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Blob(object):
     """ Class that defines Blob objects for GitLab blobs"""

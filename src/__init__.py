@@ -6,10 +6,10 @@ import time
 from pathlib import Path
 from datetime import date
 
-from src.gitlab_watchman import gitlab_wrapper
-from src.gitlab_watchman import __version__
-from src.gitlab_watchman import logger as logger
-from src.gitlab_watchman import signature
+from gitlab_watchman import gitlab_wrapper
+from gitlab_watchman import __version__
+from gitlab_watchman import logger as logger
+from gitlab_watchman import signature
 
 SIGNATURE_PATH = (Path(__file__).parent / 'gitlab_watchman/signatures').resolve()
 OUTPUT_LOGGER = logger.StdoutLogger

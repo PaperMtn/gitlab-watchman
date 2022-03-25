@@ -9,31 +9,31 @@ meta:
     Pattern left blank to return every hit
   severity: '40'
 scope:
-- blobs
+  - blobs
 test_cases:
   match_cases:
-  - blank
+    - blank
   fail_cases:
-  - blank
+    - blank
 strings:
-- "* extension:openvpn"
-- "* extension:ovpn"
-- "* extension:cscfg"
-- "* extension:rdp"
-- "* extension:jks"
-- "* extension:psafe3"
-- "* extension:agilekeychain"
-- "* extension:keychain"
-- "* extension:kwallet"
-- "* extension:tblk"
-- "* filename:otr.private_key"
-- "* filename:secret_token.rb"
-- "* filename:publish_over_ssh.BapSshPublisherPlugin.xml"
-- "* filename:credentials.xml"
-- "* filename:knife.rb"
-- "* filename:filezilla.xml"
-- "* extension:htpasswd"
-- "* extension:trc"
-- "* filename:.ssh"
-- "* filename:.chef/*.pem"
+  - "* extension:openvpn"
+  - "* extension:ovpn"
+  - "* extension:cscfg"
+  - "* extension:rdp"
+  - "* extension:jks"
+  - "* extension:psafe3"
+  - "* extension:agilekeychain"
+  - "* extension:keychain"
+  - "* extension:kwallet"
+  - "* extension:tblk"
+  - "* filename:otr.private_key"
+  - "* filename:secret_token.rb"
+  - "* filename:publish_over_ssh.BapSshPublisherPlugin.xml"
+  - "* filename:credentials.xml"
+  - "* filename:knife.rb"
+  - "* filename:filezilla.xml"
+  - "* extension:htpasswd"
+  - "* extension:trc"
+  - "* filename:.ssh"
+  - "* filename:.chef/*.pem"
 pattern: ''

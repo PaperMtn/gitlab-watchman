@@ -8,14 +8,14 @@ meta:
   description: Detects exposed S3 configuration files
   severity: '70'
 scope:
-- blobs
+  - blobs
 test_cases:
   match_cases:
-  - secret_key = 123456789abcdefg123456789123456789
+    - secret_key = 123456789abcdefg123456789123456789
   fail_cases:
-  - secret_key = $S3_SECRET_KEY
+    - secret_key = $S3_SECRET_KEY
 strings:
-- secret extension:s3cfg
-- secret extension:ini
-- s3cmd.ini
+  - secret extension:s3cfg
+  - secret extension:ini
+  - s3cmd.ini
 pattern: (?i)('|"){0,2}secret_key('|"){0,2} = ('|"){0,2}([0-9a-zA-Z!@#$&()\/\-`_.+,"]{20,})('|"){0,2}

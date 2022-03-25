@@ -8,21 +8,21 @@ meta:
   description: Detects exposed GitHub API tokens
   severity: '70'
 scope:
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
+  - blobs
+  - commits
+  - milestones
+  - wiki_blobs
+  - issues
+  - merge_requests
+  - notes
+  - snippet_titles
 test_cases:
   match_cases:
-  - 'https://github.com/login/oauth/authorize/$access_token=abcabc123123abcabc123123&token_type=bearer'
+    - 'https://github.com/login/oauth/authorize/$access_token=abcabc123123abcabc123123&token_type=bearer'
   fail_cases:
-  - 'GET https://github.com/login/oauth/authorize'
+    - 'GET https://github.com/login/oauth/authorize'
 strings:
-- api.github.com -(svg|png|jpeg)
-- github.com/login/oauth/
-- github_* -(svg|png|jpeg)
+  - api.github.com -(svg|png|jpeg)
+  - github.com/login/oauth/
+  - github_* -(svg|png|jpeg)
 pattern: '[0-9a-zA-Z]{20,40}'

@@ -44,7 +44,7 @@ class StdoutLogger(LoggingBase):
                                 'scope': scope,
                                 'type': detect_type,
                                 'severity': severity
-        })
+                            })
 
     def log_info(self, log_data: str or dict):
         self.handler.setFormatter(self.info_format)

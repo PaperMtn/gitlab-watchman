@@ -8,20 +8,20 @@ meta:
   description: Detects exposed API tokens for various Google services
   severity: '70'
 scope:
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
+  - blobs
+  - commits
+  - milestones
+  - wiki_blobs
+  - issues
+  - merge_requests
+  - notes
+  - snippet_titles
 test_cases:
   match_cases:
-  - '"current_key": "AIzaABABABABABABABABABABABABABABABABABA"'
+    - '"current_key": "AIzaABABABABABABABABABABABABABABABABABA"'
   fail_cases:
-  - '"current_key": $GOOGLE_AIZA_KEY'
+    - '"current_key": $GOOGLE_AIZA_KEY'
 strings:
-- AIza
+  - AIza
 #- 'AIza -(html|svg|png|jpeg)'
 pattern: AIza[0-9A-Za-z\\-_]{35}|[0-9]+-[0-9A-Za-z_]{32}

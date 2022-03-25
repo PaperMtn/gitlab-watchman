@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from src.gitlab_watchman.gitlab_objects import user
+from gitlab_watchman.gitlab_objects import user
+
 
 @dataclass
 class Note(object):

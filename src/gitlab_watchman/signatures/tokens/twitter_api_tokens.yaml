@@ -8,22 +8,22 @@ meta:
   description: Detects exposed Twitter API tokens
   severity: '70'
 scope:
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
+  - blobs
+  - commits
+  - milestones
+  - wiki_blobs
+  - issues
+  - merge_requests
+  - notes
+  - snippet_titles
 test_cases:
   match_cases:
-  - 'https://api.twitter.com/oauth/authorize?oauth_token=NPabcdefg0yU5T3abcdefg7iCotZ3cnetKwcabcdefg'
-  - 'twitter NPabcdefg0yU5T3abcdefg7iCotZ3cnetKwcabcdefg'
+    - 'https://api.twitter.com/oauth/authorize?oauth_token=NPabcdefg0yU5T3abcdefg7iCotZ3cnetKwcabcdefg'
+    - 'twitter NPabcdefg0yU5T3abcdefg7iCotZ3cnetKwcabcdefg'
   fail_cases:
-  - 'https://api.twitter.com/oauth/authorize?oauth_token=NPcudxy0yU5T3tBzho7iswcTIRlX0iwRl0'
+    - 'https://api.twitter.com/oauth/authorize?oauth_token=NPcudxy0yU5T3tBzho7iswcTIRlX0iwRl0'
 strings:
-- api.twitter.com -(svg|png|jpeg)
-- twitter_* -(svg|png|jpeg)
-- oauth_token_secret -(svg|png|jpeg)
+  - api.twitter.com -(svg|png|jpeg)
+  - twitter_* -(svg|png|jpeg)
+  - oauth_token_secret -(svg|png|jpeg)
 pattern: 'api\.twitter\.com\/oauth.*[0-9a-zA-Z]{35,44}|api\.twitter\.com\/oauth.*[1-9][0-9]+-[0-9a-zA-Z]{40}|([t|T][w|W][i|I][t|T][t|T][e|E][r|R]|oauth_token).*[0-9a-zA-Z]{35,44}'

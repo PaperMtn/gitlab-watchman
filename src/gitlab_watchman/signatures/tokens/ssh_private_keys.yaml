@@ -8,20 +8,20 @@ meta:
   description: Detects SSH private keys that arent covered in other signatures
   severity: '70'
 scope:
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
+  - blobs
+  - commits
+  - milestones
+  - wiki_blobs
+  - issues
+  - merge_requests
+  - notes
+  - snippet_titles
 test_cases:
   match_cases:
-  - '"private_key": "-----BEGIN PRIVATE KEY-----AABBCCDDEEFFGGHHIIJJKK=\n-----END
+    - '"private_key": "-----BEGIN PRIVATE KEY-----AABBCCDDEEFFGGHHIIJJKK=\n-----END
     PRIVATE KEY-----\n'
   fail_cases:
-  - '"private_key": $PRIVATE_KEY_FILE'
+    - '"private_key": $PRIVATE_KEY_FILE'
 strings:
-- '"BEGIN RSA PRIVATE KEY"'
+  - '"BEGIN RSA PRIVATE KEY"'
 pattern: "(?s)(-----BEGIN .+?-----)\\S{0,}"

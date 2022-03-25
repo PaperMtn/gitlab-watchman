@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Milestone(object):
     """ Class that defines Milestone objects for GitLab milestones"""
