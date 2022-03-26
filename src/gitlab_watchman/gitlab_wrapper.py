@@ -12,19 +12,19 @@ from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
 from urllib.parse import quote
 
-from gitlab_watchman import logger as logger
-from gitlab_watchman import signature
-from gitlab_watchman.gitlab_objects import note
-from gitlab_watchman.gitlab_objects import snippet
-from gitlab_watchman.gitlab_objects import project
-from gitlab_watchman.gitlab_objects import blob
-from gitlab_watchman.gitlab_objects import wiki_blob
-from gitlab_watchman.gitlab_objects import file
-from gitlab_watchman.gitlab_objects import commit
-from gitlab_watchman.gitlab_objects import user
-from gitlab_watchman.gitlab_objects import merge_request
-from gitlab_watchman.gitlab_objects import milestone
-from gitlab_watchman.gitlab_objects import issue
+from . import logger as logger
+from . import signature
+from .gitlab_objects import note
+from .gitlab_objects import snippet
+from .gitlab_objects import project
+from .gitlab_objects import blob
+from .gitlab_objects import wiki_blob
+from .gitlab_objects import file
+from .gitlab_objects import commit
+from .gitlab_objects import user
+from .gitlab_objects import merge_request
+from .gitlab_objects import milestone
+from .gitlab_objects import issue
 
 ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
