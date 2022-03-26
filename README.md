@@ -1,4 +1,4 @@
-<img src="https://i.imgur.com/Hhj8CeM.png" width="550">
+<img src="https://i.imgur.com/6uh3Gh4.png" width="550">
 
 # GitLab Watchman
 ![Python 2.7 and 3 compatible](https://img.shields.io/pypi/pyversions/gitlab-watchman)
