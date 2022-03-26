@@ -11,7 +11,7 @@ from . import __version__
 from . import logger as logger
 from . import signature
 
-SIGNATURE_PATH = (Path(__file__).parent / 'gitlab_watchman/signatures').resolve()
+SIGNATURE_PATH = (Path(__file__).parent / 'signatures').resolve()
 OUTPUT_LOGGER = logger.StdoutLogger
 
 
@@ -139,6 +139,8 @@ def main():
         else:
             tf = calendar.timegm(time.gmtime()) + 1576800000
         conf_path = f'{os.path.expanduser("~")}/watchman.conf'
+
+        print(SIGNATURE_PATH)
 
         if not validate_conf(conf_path):
             raise Exception('GITLAB_WATCHMAN_TOKEN environment variable or watchman.conf file not detected. '

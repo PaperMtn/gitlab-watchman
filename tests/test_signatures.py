@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.gitlab_watchman import signature
 
-SIGNATURES_PATH = (Path(__file__).parents[0] / 'gitlab_watchman/signatures').resolve()
+SIGNATURES_PATH = (Path(__file__).parents[1] / 'src/gitlab_watchman/signatures').resolve()
 
 
 def load_signatures() -> list:
