@@ -1,22 +1,22 @@
-# Rules
-GitLab Watchman uses rules to provide the search terms to query GitLab and Regex patterns to filter out true positives.
+# Signatures
+GitLab Watchman uses signatures to provide the search terms to query GitLab and Regex patterns to filter out true positives.
 
 They are written in YAML, and follow this format:
 ```yaml
 ---
-filename: 
+filename:
 enabled: #[true|false]
 meta:
   name:
-  author: 
-  date: 
+  author:
+  date:
   description: #what the search should find#
   severity: #rating out of 100#
 scope: #what to search, any combination of the below#
 - blobs
 - commits
 - milestones
-- wiki_blobs 
+- wiki_blobs
 - issues
 - merge_requests
 - notes
@@ -31,29 +31,31 @@ strings:
 pattern: #Regex pattern to filter out false positives#
 ```
 
-Rules are stored in the directory watchman/rules, so you can see examples there.
+Signatures are stored in the directory src/signatures, so you can see examples there.
 
 **Scope**
-This is where GitLab should look: 
+This is where GitLab should look:
 - blobs
 - commits
 - milestones
 - wiki_blobs
 - issues
 - merge_requests
+- notes
+- snippet_titles
 
 You can search for any combination of these, with each on its own line
 
 **Test cases**
-These test cases are used to check that the regex pattern works. Each rule should have at least one match (pass) and one fail case.
+These test cases are used to check that the regex pattern works. Each signature should have at least one match (pass) and one fail case.
 
 If you want to return all results found by a query, enter the value `blank` for both cases.
 
-## Creating your own rules
-You can easily create your own rules for GitLab Watchman. The two most important parts are the search queries and the regex pattern.
+## Creating your own signatures
+You can easily create your own signatures for GitLab Watchman. The two most important parts are the search queries and the regex pattern.
 
 ### Search queries
-These are stored as the entries in the 'strings' section of the rule, and are the search terms used to query GitLab to find results.
+These are stored as the entries in the 'strings' section of the signature, and are the search terms used to query GitLab to find results.
 
 Multiple entries can be put under strings to find as many potential hits as you can. So if I wanted to find passwords, I might use both of these search terms:
 `- password`
@@ -71,7 +73,7 @@ Here is an excerpt from the article:
 - To match a partial word, use \*. In this example, I want to find bugs with any 500 errors. : `bug error 50*`
 - To use one of symbols above literally, escape the symbol with a preceding \: `argument \-last`
 
-Using this syntax, you can build rules with queries to find very specific files and information. 
+Using this syntax, you can build signatures with queries to find very specific files and information.
 
 ### Regex pattern
 This pattern is used to filter results that are returned by the search query.
