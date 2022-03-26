@@ -1,7 +1,6 @@
 import argparse
 import calendar
 import os
-import yaml
 import time
 from pathlib import Path
 from datetime import date
@@ -11,24 +10,21 @@ from . import __version__
 from . import logger as logger
 from . import signature
 
-SIGNATURE_PATH = (Path(__file__).parent / 'signatures').resolve()
+SIGNATURE_PATH = (Path(__file__).parents[1] / 'signatures').resolve()
 OUTPUT_LOGGER = logger.StdoutLogger
 
 
-def validate_conf(path: Path) -> bool:
-    """ Check the file watchman.conf exists
+def validate_env_vars() -> bool:
+    """ Check the required environment variables have been set
 
-    Args:
-        path: Path .conf file is located in
     Returns:
-        True if file exists
+        True if variables have been set
     """
 
     if os.environ.get('GITLAB_WATCHMAN_TOKEN') and os.environ.get('GITLAB_WATCHMAN_URL'):
         return True
-    if os.path.exists(path):
-        with open(path) as yaml_file:
-            return yaml.safe_load(yaml_file).get('gitlab_watchman')
+    else:
+        return False
 
 
 def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
@@ -36,7 +32,7 @@ def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
            tf: int,
            scope: str):
     """ Use the appropriate search function to search GitLab based on the contents
-    of the signature file. Outputs results to stdout
+    of the signature file. Output results to stdout
 
     Args:
         gitlab_connection: GitLab API object
@@ -138,16 +134,11 @@ def main():
             tf = 2592000
         else:
             tf = calendar.timegm(time.gmtime()) + 1576800000
-        conf_path = f'{os.path.expanduser("~")}/watchman.conf'
 
-        print(SIGNATURE_PATH)
-
-        if not validate_conf(conf_path):
-            raise Exception('GITLAB_WATCHMAN_TOKEN environment variable or watchman.conf file not detected. '
-                            '\nEnsure environment variable is set or a valid file is located in your home '
-                            'directory')
+        if not validate_env_vars():
+            raise Exception('GITLAB_WATCHMAN_TOKEN environment variable not detected. '
+                            'Ensure environment variable is set')
         else:
-            config = validate_conf(conf_path)
             connection = gitlab_wrapper.initiate_gitlab_connection()
 
         now = int(time.time())
