@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8, 3.9, 3.10]
 
     steps:
     - uses: actions/checkout@v2
@@ -36,23 +36,23 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test setup & install
       run: |
-        pip install wheel setuptools requests colorama termcolor PyYAML
-        python setup.py sdist bdist_wheel
-        pip install dist/*.whl
+        pip install build
+        python3 -m build
+        python3 -m pip install dist/*.whl
     - name: Test rules
       run: |
-        python3 -m unittest tests/test_rules.py
+        python3 -m unittest tests/test_signatures.py
     - name: Test run
       run: |
-        gitlab-watchman --version
-        gitlab-watchman --help
+        slack-watchman-eg --version
+        slack-watchman-eg --help
 
   build-windows:
 
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8]
+        python-version: [3.8, 3.9, 3.10]
 
     steps:
     - uses: actions/checkout@v2
@@ -63,12 +63,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install wheel setuptools requests colorama termcolor
+        pip install build
     - name: Test setup & install
       run: |
-        python setup.py sdist bdist_wheel
-        pip install --find-links=dist\ gitlab-watchman
+        python -m build
+        pip install --find-links=dist\ slack-watchman-eg
     - name: Test run
       run: |
-        gitlab-watchman --version
-        gitlab-watchman --help
+        slack-watchman-eg --version
+        slack-watchman-eg --help
