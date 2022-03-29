@@ -13,8 +13,7 @@ WORKDIR /home/gitlab-watchman
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install requests build PyYAML
 RUN python3 -m build
-RUN mv dist/gitlab-watchman-*.whl dist/gitlab-watchman.whl
-RUN python3 -m pip install dist/gitlab-watchman.whl
+RUN python3 -m pip install dist/*.whl
 
 USER gitlab-watchman
 
