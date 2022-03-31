@@ -44,8 +44,8 @@ jobs:
         python3 -m unittest tests/test_signatures.py
     - name: Test run
       run: |
-        slack-watchman-eg --version
-        slack-watchman-eg --help
+        gitlab-watchman --version
+        gitlab-watchman --help
 
   build-windows:
 
@@ -67,8 +67,8 @@ jobs:
     - name: Test setup & install
       run: |
         python -m build
-        pip install --find-links=dist\ slack-watchman-eg
+        pip install --find-links=dist\ gitlab-watchman
     - name: Test run
       run: |
-        slack-watchman-eg --version
-        slack-watchman-eg --help
+        gitlab-watchman --version
+        gitlab-watchman --help
