@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 from . import user
 
@@ -12,7 +13,7 @@ class Namespace(object):
     full_path: str
     parent_id: str
     web_url: str
-    members: list[user.User] or None
+    members: List[user.User] or None
     owner: user.User or None
 
 

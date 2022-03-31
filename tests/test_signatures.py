@@ -7,6 +7,7 @@ from src.gitlab_watchman import signature
 
 SIGNATURES_PATH = (Path(__file__).parents[1] / 'src/signatures').resolve()
 
+
 def load_signatures() -> list:
     """Load signatures from YAML files
 

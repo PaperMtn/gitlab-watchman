@@ -63,7 +63,7 @@ def init_logger() -> logger.StdoutLogger:
     return logger.StdoutLogger()
 
 
-def load_signatures() -> list[signature.Signature]:
+def load_signatures() -> [signature.Signature]:
     """ Load signatures from YAML files
 
     Returns:

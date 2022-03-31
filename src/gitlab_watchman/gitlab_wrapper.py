@@ -194,7 +194,7 @@ class GitLabAPIClient(object):
 
     def global_search(self,
                       search_term: str = '',
-                      search_scope: str = '') -> list[json]:
+                      search_scope: str = '') -> [json]:
         """ Wrapper for the GitLab advanced search API. Uses search term and scope to
         decide what to search for.
 
@@ -307,7 +307,7 @@ def _convert_time(timestamp: str) -> int:
     return int(time.mktime(time.strptime(timestamp, pattern)))
 
 
-def _deduplicate(input_list: list) -> list[dict]:
+def _deduplicate(input_list: list) -> [dict]:
     """ Removes duplicates where results are returned by multiple queries
     Nested class handles JSON encoding for dataclass objects
 
