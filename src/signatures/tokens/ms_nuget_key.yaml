@@ -18,11 +18,12 @@ scope:
   - snippet_titles
 test_cases:
   match_cases:
-    - SKaaaaaaaa413272ec0a65f2fd1b14ab10
+    - oy2fve3tqk4amkc55vkaxxpledpqt7vu5bpjsopbbgwffc
   fail_cases:
-    - SK_TEST_6f9cfc9d413272ec0a65f2fd1b14ab10
+    - oz2fve3tqk4amkc55vkaxxpledpqt7vu5bpjsopbbgwffc
 strings:
   - api.nuget.org
   - nuget_*
   - nuget
-pattern: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+  - oy2
+pattern: '(?i)(oy2[a-z0-9]{43})\b'

@@ -20,7 +20,7 @@ test_cases:
   match_cases:
     - SKaaaaaaaa413272ec0a65f2fd1b14ab10
   fail_cases:
-    - SK_TEST_6f9cfc9d413272ec0a65f2fd1b14ab10
+    - SK_TEST_6f9cfc9d413272ec0a65f2fd1b
 strings:
   - api.twilio.com
   - TWILIO_API
