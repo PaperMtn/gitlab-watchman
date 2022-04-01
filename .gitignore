@@ -123,8 +123,3 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# package related
-config/
-*.txt
-*.csv

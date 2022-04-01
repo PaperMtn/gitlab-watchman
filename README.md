@@ -1,4 +1,4 @@
-<img src="https://i.imgur.com/Hhj8CeM.png" width="550">
+<img src="https://i.imgur.com/6uh3Gh4.png" width="550">
 
 # GitLab Watchman
 ![Python 2.7 and 3 compatible](https://img.shields.io/pypi/pyversions/gitlab-watchman)
@@ -17,6 +17,8 @@ It searches GitLab for internally shared projects and looks at:
 - Issues
 - Merge requests
 - Milestones
+- Notes
+- Snippets
 
 For the following data:
 - GCP keys and service account files
@@ -40,8 +42,8 @@ You can run GitLab Watchman to look for results going back as far as:
 
 This means after one deep scan, you can schedule GitLab Watchman to run regularly and only return results from your chosen timeframe.
 
-### Rules
-GitLab Watchman uses custom YAML rules to detect matches in GitLab.
+### Signatures
+GitLab Watchman uses custom YAML signatures to detect matches in GitLab.
 
 They follow this format:
 
@@ -62,6 +64,8 @@ scope: #what to search, any combination of the below#
 - wiki_blobs
 - issues
 - merge_requests
+- notes
+- snippet_titles
 test_cases:
   match_cases:
   - #test case that should match the regex#
@@ -71,22 +75,13 @@ strings:
 - #search query to use in GitLab#
 pattern: #Regex pattern to filter out false positives#
 ```
-There are Python tests to ensure rules are formatted properly and that the Regex patterns work in the `tests` dir
+There are Python tests to ensure signatures are formatted properly and that the Regex patterns work in the `tests` dir
 
-More information about rules, and how you can add your own, is in the file `docs/rules.md`.
+More information about signatures, and how you can add your own, is in the file `docs/signatures.md`.
 
 ### Logging
 
-GitLab Watchman gives the following logging options:
-- Log file
-- Stdout
-- TCP stream
-
-Results are output in JSON format, perfect for ingesting into a SIEM or other log analysis platform.
-
-For file and TCP stream logging, configuration options need to be passed via `.conf` file or environment variable. See the file `docs/logging.md` for instructions on how to set it up.
-
-If no logging option is given, GitLab Watchman defaults to Stdout logging.
+Results are output to stdout in JSON format, perfect for ingesting into a SIEM or other log analysis platform.
 
 ## Requirements
 
@@ -122,47 +117,46 @@ api
 You also need to provide the URL of your GitLab instance.
 
 #### Providing token & URL
-GitLab Watchman will first try to get the the GitLab token and URL from the environment variables `GITLAB_WATCHMAN_TOKEN` and `GITLAB_WATCHMAN_URL`, if this fails they will be taken from .conf file (see below).
-
-### .conf file
-Configuration options can be passed in a file named `watchman.conf` which must be stored in your home directory. The file should follow the YAML format, and should look like below:
-```yaml
-gitlab_watchman:
-  token: abc123
-  url: https://gitlab.example.com
-  logging:
-    file_logging:
-      path:
-    json_tcp:
-      host:
-      port:
-```
-GitLab Watchman will look for this file at runtime, and use the configuration options from here. If you are not using the advanced logging features, leave them blank.
-
-If you are having issues with your .conf file, run it through a YAML linter.
-
-An example file is in `docs/example.conf`
-
-**Note** If you use any other Watchman applications and already have a `watchman.conf` file, just append the conf data for GitLab Watchman to the existing file.
+GitLab Watchman will get the GitLab token and URL from the environment variables `GITLAB_WATCHMAN_TOKEN` and `GITLAB_WATCHMAN_URL`.
 
 ## Installation
-Install via pip
+You can install the latest stable version via pip:
 
-`pip install gitlab-watchman`
+`python3 -m pip install gitlab-watchman`
 
-Or via source
+Or build from source yourself, which is useful for if you intend to add your own signatures:
+
+Download the release source files, then from the top level repository run:
+```shell
+python3 -m build
+python3 -m pip install --force-reinstall dist/*.whl
+```
+
+## Docker Image
+
+GitLab Watchman is also available from the Docker hub as a Docker image:
+
+`docker pull papermountain/gitlab-watchman:latest`
+
+You can then run GitLab Watchman in a container, making sure you pass the required environment variables:
+
+```
+// help
+docker run --rm papermountain/gitlab-watchman -h
+
+// scan all
+docker run --rm -e GITLAB_WATCHMAN_TOKEN=abc123 -e GITLAB_WATCHMAN_URL=https://example.gitlab.com papermountain/gitlab-watchman --timeframe a --all
+docker run --rm --env-file .env papermountain/gitlab-watchman --timeframe a --all
+```
 
 ## Usage
 GitLab Watchman will be installed as a global command, use as follows:
 ```
-usage: gitlab-watchman [-h] --timeframe {d,w,m,a} --output
-                   {file,stdout,stream} [--version] [--all] [--blobs]
-                   [--commits] [--wiki-blobs] [--issues] [--merge-requests]
-                   [--milestones] [--comments]
+usage: gitlab-watchman [-h] --timeframe {d,w,m,a} [--version] [--all] [--blobs] [--commits] [--wiki-blobs] [--issues] [--merge-requests] [--milestones] [--notes] [--snippets]
 
 Monitoring GitLab for sensitive data shared publicly
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --all                 Find everything
@@ -172,29 +166,17 @@ optional arguments:
   --issues              Search issues
   --merge-requests      Search merge requests
   --milestones          Search milestones
-  --comments            Search comments
-
-required arguments:
-  --timeframe {d,w,m,a}
-                        How far back to search: d = 24 hours w = 7 days, m =
-                        30 days, a = all time
-  --output {file,stdout,stream}
-                        Where to send results
+  --notes               Search notes
+  --snippets            Search snippets
 
   ```
-
-You can run GitLab Watchman to look for everything, and output to default Stdout:
-
-`gitlab-watchman --timeframe a --all`
-
-Or arguments can be grouped together to search more granularly. This will look for commits and milestones for the last 30 days, and output the results to a TCP stream:
-
-`gitlab-watchman --timeframe m --commits --milestones --output stream`
 
 ## Other Watchman apps
 You may be interested in some of the other apps in the Watchman family:
 - [Slack Watchman](https://github.com/PaperMtn/slack-watchman)
+- [Slack Watchman for Enterprise Grid](https://github.com/PaperMtn/slack-watchman-enterprise-grid)
 - [GitHub Watchman](https://github.com/PaperMtn/github-watchman)
+- [Trello Watchman](https://github.com/PaperMtn/trello-watchman)
 
 ## License
 The source code for this project is released under the [GNU General Public Licence](https://www.gnu.org/licenses/licenses.html#GPL). This project is not associated with GitLab.
