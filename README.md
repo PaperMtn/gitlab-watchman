@@ -132,6 +132,23 @@ python3 -m build
 python3 -m pip install --force-reinstall dist/*.whl
 ```
 
+## Docker Image
+
+GitLab Watchman is also available from the Docker hub as a Docker image:
+
+`docker pull papermountain/gitlab-watchman:latest`
+
+You can then run GitLab Watchman in a container, making sure you pass the required environment variables:
+
+```
+// help
+docker run --rm papermountain/gitlab-watchman -h
+
+// scan all
+docker run --rm -e GITLAB_WATCHMAN_TOKEN=abc123 -e GITLAB_WATCHMAN_URL=https://example.gitlab.com papermountain/gitlab-watchman --timeframe a --all
+docker run --rm --env-file .env papermountain/gitlab-watchman --timeframe a --all
+```
+
 ## Usage
 GitLab Watchman will be installed as a global command, use as follows:
 ```
