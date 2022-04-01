@@ -11,9 +11,12 @@
 - Updated logo to play nicely with dark mode displays
 
 ### Removed:
-**Breaking changes:**
+
 - Logging to file and TCP stream - logs to stdout like a true 12 factor app. Reroute stdout as you see fit. --output 
 - .conf file for configuration options. Pass the environment variables `GITLAB_WATCHMAN_TOKEN` and `GITLAB_WATCHMAN_URL`
+
+**Breaking changes:**
+- The --output flag is no longer required, and therefore not supported
 
 
 ## 1.4.0 - 2020-12-24
