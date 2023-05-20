@@ -1,4 +1,23 @@
-## 2.0.0 - 2022-04-01
+## [3.0.0] - 2023-05-15
+This major version release brings multiple updates to GitLab Watchman in usability, functionality and behind the scenes improvements.
+### Added
+- Support for centralised signatures from the [Watchman Signatures repository](https://github.com/PaperMtn/watchman-signatures)
+  - This makes it much easier to keep the signature base for all Watchman applications up to date, and to add functionality to GitLab Watchman with new signatures. New signatures are downloaded, and updates to existing signatures are applied, at runtime, meaning GitLab Watchman will always be using the most up to date signatures.
+- Major UI overhaul
+  - A lot of feedback said GitLab Watchman was hard to read. This version introduces new terminal optimised logging as a logging option, as well as JSON formatting. This formatting is now the default when running with no output option selected, and is a lot easier for humans to read. Also, colours!
+- Enumeration options added
+  - GitLab Watchman now gathers more information from an instance. Useful if your use case is more red than blue...
+    - Instance metadata output to terminal 
+    - Information on the user you are authenticated as, and the token you are using, including what permissions it has.
+    - All instance users output to CSV
+    - All instance projects output to CSV
+    - All instance groups output to CSV
+- Option choose between verbose or succinct logging when using JSON output. Default is succinct.
+- Debug logging option
+### Removed
+- Local/custom signatures - Centralised signatures mean that user-created custom signatures can't be used with GitLab Watchman for Enterprise Grid anymore. If you have made a signature you think would be good for sharing with the community, feel free to add it to the Watchman Signatures repository, so it can be used in all Watchman applications
+
+## [2.0.0] - 2022-03-22
 ### Added:
 - New scopes for finding exposed data in:
   - notes
@@ -19,7 +38,7 @@
 - The --output flag is no longer required, and therefore not supported
 
 
-## 1.4.0 - 2020-12-24
+## [1.4.0] - 2020-12-24
 ### Added:
 - Refactor of rules into directories for easier management
 - Multiprocessing implemented for searching for matches. GitLab Watchman now splits regex filtering between the cores available on the device, meaning the more cores you have, the faster searching should run.
@@ -36,7 +55,7 @@
   - Microsoft NuGet keys
 
 
-## 1.3.0 - 2020-12-12
+## [1.3.0] - 2020-12-12
 ### Added:
 - Add more information about the namespaces a project is in to logs
 - Added owner details of that namespace, for groups and users
@@ -50,7 +69,7 @@
 ### Removed:
 - Enhanced logging that includes nested information, such as namespace owners, means that CSV logging is no longer practical. CSV logging has been removed and JSON via STDOUT is now the default option.
 
-## 1.2.0 - 2020-11-16
+## [1.2.0] - 2020-11-16
 ### Added:
 - More data on namespaces added to logs
 - Better search queries for existing rules to filter out false positives
@@ -61,12 +80,12 @@
 ### Fixed:
 - Bug on outputting match string for blobs/wiki-blobs
 
-## 1.1.0 - 2020-11-14
+## [1.1.0] - 2020-11-14
 ### Fixed
 - Retry added for occasional Requests HTTPSConnectionPool error
 
 ### Added
 - Exact regex string match added to output from message searches
 
-## 1.0.0 - 2020-10-01
+## [1.0.0] - 2020-10-01
 Release
