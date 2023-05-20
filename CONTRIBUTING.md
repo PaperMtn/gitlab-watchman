@@ -6,15 +6,6 @@ The two main areas where you can contribute are:
 - Signature files
 - Additional functionality
 
-
-## Adding new signatures
-GitLab Watchman runs using YAML signature files that are stored in the `signature` directory. They define what to search Slack for, and are the heart of the application.
-
-Instructions on how to create your own signature files can be found in `docs\signatures.md`
-
-If you do write your own signatures, please contribute them to the project by creating a pull request.
-
-
 ## Additional functionality
 You can make recommendations for new functionality via raising issues using the feature request template. Even better, you could contribute the additional functionality yourself and create a pull request for the changes to be added to a future release.
 

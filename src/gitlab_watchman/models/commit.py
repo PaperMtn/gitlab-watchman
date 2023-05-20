@@ -1,25 +1,9 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class Commit(object):
     """ Class that defines File objects for GitLab files"""
-
-    __slots__ = [
-        'id',
-        'created_at',
-        'title',
-        'message',
-        'author_name',
-        'author_email',
-        'authored_date',
-        'committer_name',
-        'committer_email',
-        'committed_date',
-        'web_url',
-        'status',
-        'project_id'
-    ]
 
     id: str
     created_at: str
@@ -45,7 +29,7 @@ def create_from_dict(commit_dict: dict) -> Commit:
         A new Note object
     """
 
-    commit_object = Commit(
+    return Commit(
         id=commit_dict.get('id'),
         created_at=commit_dict.get('created_at'),
         title=commit_dict.get('title'),
@@ -60,5 +44,3 @@ def create_from_dict(commit_dict: dict) -> Commit:
         status=commit_dict.get('status'),
         project_id=commit_dict.get('project_id')
     )
-
-    return commit_object

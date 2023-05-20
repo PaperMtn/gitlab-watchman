@@ -1,19 +1,9 @@
 from dataclasses import dataclass
 
 
-@dataclass
-class WikiBlob(object):
-    """ Class that defines WikiBlob objects for GitLab blobs"""
-
-    __slots__ = [
-        'basename',
-        'data',
-        'path',
-        'filename',
-        'id',
-        'ref',
-        'project_id'
-    ]
+@dataclass(slots=True)
+class Blob(object):
+    """ Class that defines Blob objects for GitLab blobs"""
 
     basename: str
     data: str
@@ -24,16 +14,16 @@ class WikiBlob(object):
     project_id: str
 
 
-def create_from_dict(blob_dict: dict) -> WikiBlob:
-    """ Create a WikiBlob object from a dict response from the GitLab API
+def create_from_dict(blob_dict: dict) -> Blob:
+    """ Create a Blob object from a dict response from the GitLab API
 
     Args:
         blob_dict: dict/JSON format data from GitLab API
     Returns:
-        A new WikiBlob object
+        A new Blob object
     """
 
-    blob_object = WikiBlob(
+    return Blob(
         id=blob_dict.get('id'),
         basename=blob_dict.get('basename'),
         data=blob_dict.get('data'),
@@ -42,5 +32,3 @@ def create_from_dict(blob_dict: dict) -> WikiBlob:
         ref=blob_dict.get('ref'),
         project_id=blob_dict.get('project_id')
     )
-
-    return blob_object

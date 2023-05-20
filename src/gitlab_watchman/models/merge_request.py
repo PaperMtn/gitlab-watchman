@@ -3,29 +3,9 @@ from dataclasses import dataclass
 from . import user
 
 
-@dataclass
+@dataclass(slots=True)
 class MergeRequest(object):
     """ Class that defines MergeRequest objects for GitLab merge requests"""
-
-    __slots__ = [
-        'id',
-        'iid',
-        'project_id',
-        'title',
-        'description',
-        'state',
-        'created_at',
-        'updated_at',
-        'merged_by',
-        'merged_at',
-        'target_branch',
-        'source_branch',
-        'author',
-        'source_project_id',
-        'target_project_id',
-        'merge_status',
-        'web_url'
-    ]
 
     id: str
     iid: str
@@ -59,7 +39,7 @@ def create_from_dict(mr_dict: dict) -> MergeRequest:
     else:
         merged_by = None
 
-    mr_object = MergeRequest(
+    return MergeRequest(
         id=mr_dict.get('id'),
         iid=mr_dict.get('iid'),
         project_id=mr_dict.get('project_id'),
@@ -78,5 +58,3 @@ def create_from_dict(mr_dict: dict) -> MergeRequest:
         merge_status=mr_dict.get('merge_status'),
         web_url=mr_dict.get('web_url'),
     )
-
-    return mr_object

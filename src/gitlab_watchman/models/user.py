@@ -1,17 +1,9 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class User(object):
     """ Class that defines User objects for GitLab users"""
-
-    __slots__ = [
-        'id',
-        'name',
-        'username',
-        'state',
-        'web_url'
-    ]
 
     id: str
     name: str

@@ -1,24 +1,9 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class Milestone(object):
     """ Class that defines Milestone objects for GitLab milestones"""
-
-    __slots__ = [
-        'id',
-        'iid',
-        'project_id',
-        'title',
-        'description',
-        'state',
-        'created_at',
-        'updated_at',
-        'due_date',
-        'start_date',
-        'expired',
-        'web_url'
-    ]
 
     id: str
     iid: str
@@ -43,7 +28,7 @@ def create_from_dict(milestone_dict: dict) -> Milestone:
         A new MergeRequest object
     """
 
-    milestone_object = Milestone(
+    return Milestone(
         id=milestone_dict.get('id'),
         iid=milestone_dict.get('iid'),
         title=milestone_dict.get('title'),
@@ -57,5 +42,3 @@ def create_from_dict(milestone_dict: dict) -> Milestone:
         web_url=milestone_dict.get('web_url'),
         project_id=milestone_dict.get('project_id')
     )
-
-    return milestone_object

@@ -4,7 +4,7 @@ from typing import List
 from . import user
 
 
-@dataclass
+@dataclass(slots=True)
 class Namespace(object):
     id: str
     name: str
@@ -17,22 +17,9 @@ class Namespace(object):
     owner: user.User or None
 
 
-@dataclass
+@dataclass(slots=True)
 class Project(object):
     """ Class that defines User objects for GitLab projects"""
-
-    __slots__ = [
-        'id',
-        'description',
-        'name',
-        'name_with_namespace',
-        'path',
-        'path_with_namespace',
-        'created_at',
-        'web_url',
-        'last_activity_at',
-        'namespace',
-    ]
 
     id: str
     description: str
@@ -55,7 +42,7 @@ def create_from_dict(project_dict: dict) -> Project:
         A new Project object
     """
 
-    project_object = Project(
+    return Project(
         id=project_dict.get('id'),
         description=project_dict.get('description'),
         name=project_dict.get('name'),
@@ -77,5 +64,3 @@ def create_from_dict(project_dict: dict) -> Project:
             owner=[]
         )
     )
-
-    return project_object

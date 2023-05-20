@@ -7,9 +7,11 @@
 
 ## About GitLab Watchman
 
-GitLab Watchman is an application that uses the GitLab API to audit GitLab for sensitive data and credentials exposed internally.
+GitLab Watchman is an application that uses the GitLab API to detect exposed secrets and personal data. It also enumerates the GitLab instance for any useful information.
 
 ### Features
+
+#### Secrets Detection
 It searches GitLab for internally shared projects and looks at:
 - Code
 - Commits
@@ -33,7 +35,7 @@ For the following data:
 - Passwords in plaintext
 - and more
 
-#### Time based searching
+##### Time based searching
 You can run GitLab Watchman to look for results going back as far as:
 - 24 hours
 - 7 days
@@ -42,46 +44,31 @@ You can run GitLab Watchman to look for results going back as far as:
 
 This means after one deep scan, you can schedule GitLab Watchman to run regularly and only return results from your chosen timeframe.
 
+#### Enumeration
+GitLab Watchman can enumerate potentially useful information from a GitLab instance:
+- Instance metadata
+- Information on the calling user/token being used
+- Output all users to CSV file
+- Output all projects to CSV file
+- Output all groups to CSV file
+
 ### Signatures
-GitLab Watchman uses custom YAML signatures to detect matches in GitLab.
-
-They follow this format:
-
-```yaml
----
-filename:
-enabled: #[true|false]
-meta:
-  name:
-  author:
-  date:
-  description: #what the search should find#
-  severity: #rating out of 100#
-scope: #what to search, any combination of the below#
-- blobs
-- commits
-- milestones
-- wiki_blobs
-- issues
-- merge_requests
-- notes
-- snippet_titles
-test_cases:
-  match_cases:
-  - #test case that should match the regex#
-  fail_cases:
-  - #test case that should not match the regex#
-strings:
-- #search query to use in GitLab#
-pattern: #Regex pattern to filter out false positives#
-```
-There are Python tests to ensure signatures are formatted properly and that the Regex patterns work in the `tests` dir
-
-More information about signatures, and how you can add your own, is in the file `docs/signatures.md`.
+GitLab Watchman uses custom YAML signatures to detect matches in GitLab. These signatures are pulled from the central [Watchman Signatures repository](https://github.com/PaperMtn/watchman-signatures). Slack Watchman automatically updates its signature base at runtime to ensure its using the latest signatures to detect secrets.
 
 ### Logging
 
-Results are output to stdout in JSON format, perfect for ingesting into a SIEM or other log analysis platform.
+GitLab Watchman gives the following logging options:
+- Terminal-friendly Stdout
+- JSON to Stdout
+
+GitLab Watchman defaults to terminal-friendly stdout logging if no option is given. This is designed to be easier for humans to read.
+
+JSON logging is also available, which is perfect for ingesting into a SIEM or other log analysis platforms.
+
+JSON formatted logging can be easily redirected to a file as below:
+```commandline
+gitlab-watchman --timeframe a --all --output json >> gitlab_watchman_log.json 
+```
 
 ## Requirements
 
@@ -124,9 +111,7 @@ You can install the latest stable version via pip:
 
 `python3 -m pip install gitlab-watchman`
 
-Or build from source yourself, which is useful for if you intend to add your own signatures:
-
-Download the release source files, then from the top level repository run:
+Or build from source yourself. Download the release source files, then from the top level repository run:
 ```shell
 python3 -m build
 python3 -m pip install --force-reinstall dist/*.whl
@@ -135,31 +120,41 @@ python3 -m pip install --force-reinstall dist/*.whl
 ## Usage
 GitLab Watchman will be installed as a global command, use as follows:
 ```
-usage: gitlab-watchman [-h] --timeframe {d,w,m,a} [--version] [--all] [--blobs] [--commits] [--wiki-blobs] [--issues] [--merge-requests] [--milestones] [--notes] [--snippets]
+usage: gitlab-watchman [-h] --timeframe {d,w,m,a} [--output {json,stdout}] [--version] [--all] [--blobs] [--commits] [--wiki-blobs] [--issues]
+                   [--merge-requests] [--milestones] [--notes] [--snippets] [--enumerate] [--debug] [--verbose]
 
-Monitoring GitLab for sensitive data shared publicly
+Finding exposed secrets and personal data in GitLab
 
 options:
   -h, --help            show this help message and exit
-  --version             show program's version number and exit
-  --all                 Find everything
-  --blobs               Search code blobs
-  --commits             Search commits
-  --wiki-blobs          Search wiki blobs
-  --issues              Search issues
-  --merge-requests      Search merge requests
-  --milestones          Search milestones
-  --notes               Search notes
-  --snippets            Search snippets
+  --output {json,stdout}, -o {json,stdout}
+                        Where to send results
+  --version, -v         show program's version number and exit
+  --all, -a             Find everything
+  --blobs, -b           Search code blobs
+  --commits, -c         Search commits
+  --wiki-blobs, -w      Search wiki blobs
+  --issues, -i          Search issues
+  --merge-requests, -mr
+                        Search merge requests
+  --milestones, -m      Search milestones
+  --notes, -n           Search notes
+  --snippets, -s        Search snippets
+  --enumerate, -e       Enumerate this GitLab instance for users, groups, projects.Output will be saved to CSV files
+  --debug, -d           Turn on debug level logging
+  --verbose, -V         Turn on more verbose output for JSON logging. This includes more fields, but is larger
+
+required arguments:
+  --timeframe {d,w,m,a}
+                        How far back to search: d = 24 hours w = 7 days, m = 30 days, a = all time
 
   ```
 
 ## Other Watchman apps
-You may be interested in some of the other apps in the Watchman family:
+You may be interested in the other apps in the Watchman family:
 - [Slack Watchman](https://github.com/PaperMtn/slack-watchman)
 - [Slack Watchman for Enterprise Grid](https://github.com/PaperMtn/slack-watchman-enterprise-grid)
 - [GitHub Watchman](https://github.com/PaperMtn/github-watchman)
-- [Trello Watchman](https://github.com/PaperMtn/trello-watchman)
 
 ## License
 The source code for this project is released under the [GNU General Public Licence](https://www.gnu.org/licenses/licenses.html#GPL). This project is not associated with GitLab.

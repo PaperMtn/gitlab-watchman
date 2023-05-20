@@ -9,10 +9,10 @@ __all__ = [
 ]
 
 __title__ = 'GitLab Watchman'
-__summary__ = 'Monitoring GitLab for sensitive data shared publicly'
+__summary__ = 'Finding exposed secrets and personal data in GitLab'
 __uri__ = 'https://github.com/PaperMtn/gitlab-watchman'
-__version__ = '2.0.0'
+__version__ = '3.0.0'
 __author__ = 'PaperMtn'
 __email__ = 'papermtn@protonmail.com'
 __license__ = 'GPL-3.0'
-__copyright__ = f'2022 {__author__}'
+__copyright__ = f'2023 {__author__}'

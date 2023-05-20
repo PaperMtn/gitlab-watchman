@@ -3,27 +3,9 @@ from dataclasses import dataclass
 from . import user
 
 
-@dataclass
+@dataclass(slots=True)
 class Issue(object):
     """ Class that defines Issues objects for GitLab issues"""
-
-    __slots__ = [
-        'id',
-        'iid',
-        'project_id',
-        'title',
-        'description',
-        'state',
-        'created_at',
-        'updated_at',
-        'closed_at',
-        'closed_by',
-        'author',
-        'type',
-        'author',
-        'confidential',
-        'web_url'
-    ]
 
     id: str
     iid: str
@@ -55,7 +37,7 @@ def create_from_dict(issue_dict: dict) -> Issue:
     else:
         closed_by = None
 
-    issue_object = Issue(
+    return Issue(
         id=issue_dict.get('id'),
         iid=issue_dict.get('iid'),
         project_id=issue_dict.get('project_id'),
@@ -71,5 +53,3 @@ def create_from_dict(issue_dict: dict) -> Issue:
         confidential=issue_dict.get('confidential'),
         web_url=issue_dict.get('web_url'),
     )
-
-    return issue_object

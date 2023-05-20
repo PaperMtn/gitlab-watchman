@@ -3,30 +3,9 @@ from dataclasses import dataclass
 from . import user
 
 
-@dataclass
+@dataclass(slots=True)
 class Note(object):
     """ Class that defines User objects for GitLab notes"""
-
-    __slots__ = [
-        'id',
-        'type',
-        'body',
-        'attachment',
-        'author',
-        'created_at',
-        'updated_at',
-        'system',
-        'noteable_id',
-        'noteable_type',
-        'commit_id',
-        'resolvable',
-        'resolved',
-        'resolved_by',
-        'resolved_at',
-        'confidential',
-        'noteable_iid',
-        'command_changes'
-    ]
 
     id: str
     type: str
@@ -60,7 +39,7 @@ def create_from_dict(note_dict: dict) -> Note:
     else:
         resolved_by = None
 
-    note_object = Note(
+    return Note(
         id=note_dict.get('id'),
         type=note_dict.get('type'),
         body=note_dict.get('body'),
@@ -79,5 +58,3 @@ def create_from_dict(note_dict: dict) -> Note:
         noteable_iid=note_dict.get('noteable_iid'),
         command_changes=note_dict.get('command_changes'),
     )
-
-    return note_object

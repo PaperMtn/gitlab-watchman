@@ -3,22 +3,9 @@ from dataclasses import dataclass
 from . import user
 
 
-@dataclass
+@dataclass(slots=True)
 class Snippet(object):
     """ Class that defines User objects for GitLab snippets"""
-
-    __slots__ = [
-        'id',
-        'title',
-        'description',
-        'visibility',
-        'updated_at',
-        'created_at',
-        'web_url',
-        'author',
-        'file_name',
-        'files',
-    ]
 
     id: str
     title: str
@@ -32,12 +19,8 @@ class Snippet(object):
     files: list
 
 
-@dataclass
+@dataclass(slots=True)
 class File(object):
-    __slots__ = [
-        'path',
-        'raw_url',
-    ]
 
     path: str
     raw_url: str
@@ -61,7 +44,7 @@ def create_from_dict(snip_dict: dict) -> Snippet:
     else:
         file_list = None
 
-    snippet_object = Snippet(
+    return Snippet(
         id=snip_dict.get('id'),
         title=snip_dict.get('title'),
         description=snip_dict.get('description'),
@@ -73,5 +56,3 @@ def create_from_dict(snip_dict: dict) -> Snippet:
         file_name=snip_dict.get('file_name'),
         files=file_list
     )
-
-    return snippet_object
