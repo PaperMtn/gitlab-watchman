@@ -78,7 +78,10 @@ class GitLabAPIClient(object):
     def _get_pages(self, url, params):
         first_page = self._make_request(url, params)
         yield first_page.json()
-        num_pages = int(first_page.headers.get('X-Total-Pages'))
+        try:
+            num_pages = int(first_page.headers.get('X-Total-Pages'))
+        except TypeError:
+            num_pages = 1
 
         for page in range(2, num_pages + 1):
             params['page'] = str(page)
