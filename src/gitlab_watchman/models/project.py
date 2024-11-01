@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from . import user
+from gitlab_watchman.models import user
 
 
 @dataclass(slots=True)

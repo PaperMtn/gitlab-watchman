@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from . import user
+from gitlab_watchman.models import user
 
 
 @dataclass(slots=True)
