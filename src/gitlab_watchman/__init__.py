@@ -10,12 +10,10 @@ from importlib import metadata
 from pathlib import Path
 from typing import List
 
-from . import gitlab_wrapper
-# from . import __version__
-from . import gw_logger
-from . import signature_updater
-from . import exceptions
-from .models import (
+from gitlab_watchman import gitlab_wrapper, exceptions
+from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
+from gitlab_watchman.signature_downloader import SignatureDownloader
+from gitlab_watchman.models import (
     signature,
     user,
     project,
@@ -23,7 +21,7 @@ from .models import (
 )
 
 SIGNATURES_PATH = (Path(__file__).parents[2] / 'watchman-signatures').resolve()
-OUTPUT_LOGGER = gw_logger.JSONLogger
+OUTPUT_LOGGER = loggers.JSONLogger
 
 
 def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
@@ -67,7 +65,7 @@ def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
         raise e
 
 
-def init_logger(logging_type: str, debug: bool) -> gw_logger.JSONLogger or gw_logger.StdoutLogger:
+def init_logger(logging_type: str, debug: bool) -> JSONLogger or StdoutLogger:
     """ Create a logger object. Defaults to stdout if no option is given
 
     Args:
@@ -78,30 +76,9 @@ def init_logger(logging_type: str, debug: bool) -> gw_logger.JSONLogger or gw_lo
     """
 
     if not logging_type or logging_type == 'stdout':
-        return gw_logger.StdoutLogger(debug=debug)
+        return StdoutLogger(debug=debug)
     else:
-        return gw_logger.JSONLogger(debug=debug)
-
-
-def load_signatures() -> List[signature.Signature]:
-    """ Load signatures from YAML files
-    Returns:
-        List containing loaded definitions as Signatures objects
-    """
-
-    loaded_signatures = []
-    try:
-        for root, dirs, files in os.walk(SIGNATURES_PATH):
-            for sig_file in files:
-                sig_path = (Path(root) / sig_file).resolve()
-                if sig_path.name.endswith('.yaml'):
-                    loaded_def = signature.load_from_yaml(sig_path)
-                    for sig in loaded_def:
-                        if sig.status == 'enabled' and 'gitlab' in sig.watchman_apps:
-                            loaded_signatures.append(sig)
-        return loaded_signatures
-    except Exception as e:
-        raise e
+        return JSONLogger(debug=debug)
 
 
 def validate_variables() -> bool:
@@ -213,10 +190,8 @@ def main():
         else:
             OUTPUT_LOGGER.log('INFO', 'Using non-verbose logging')
 
-        OUTPUT_LOGGER.log('INFO', 'Downloading signature file updates')
-        signature_updater.SignatureUpdater(OUTPUT_LOGGER).update_signatures()
-        OUTPUT_LOGGER.log('INFO', 'Importing signatures...')
-        signature_list = load_signatures()
+        OUTPUT_LOGGER.log('INFO', 'Downloading and importing signatures')
+        signature_list = SignatureDownloader(OUTPUT_LOGGER).download_signatures()
         OUTPUT_LOGGER.log('SUCCESS', f'{len(signature_list)} signatures loaded')
         OUTPUT_LOGGER.log('INFO', f'{multiprocessing.cpu_count() - 1} cores being used')
 
@@ -239,7 +214,7 @@ def main():
                 user_objects.append(user.create_from_dict(u))
             OUTPUT_LOGGER.log('SUCCESS', f'{len(gitlab_user_output)} users discovered')
             OUTPUT_LOGGER.log('INFO', 'Writing to csv')
-            gw_logger.export_csv('gitlab_users', user_objects)
+            log_to_csv('gitlab_users', user_objects)
             OUTPUT_LOGGER.log(
                 'SUCCESS',
                 f'Users output to CSV file: {os.path.join(os.getcwd(), "gitlab_users.csv")}')
@@ -251,7 +226,7 @@ def main():
                 group_objects.append(group.create_from_dict(g))
             OUTPUT_LOGGER.log('SUCCESS', f'{len(group_objects)} groups discovered')
             OUTPUT_LOGGER.log('INFO', 'Writing to csv')
-            gw_logger.export_csv('gitlab_groups', group_objects)
+            log_to_csv('gitlab_groups', group_objects)
             OUTPUT_LOGGER.log(
                 'SUCCESS',
                 f'Groups output to CSV file: {os.path.join(os.getcwd(), "gitlab_groups.csv")}')
@@ -263,7 +238,7 @@ def main():
                 project_objects.append(project.create_from_dict(p))
             OUTPUT_LOGGER.log('SUCCESS', f'{len(project_objects)} projects discovered')
             OUTPUT_LOGGER.log('INFO', 'Writing to csv')
-            gw_logger.export_csv('gitlab_projects', project_objects)
+            log_to_csv('gitlab_projects', project_objects)
             OUTPUT_LOGGER.log(
                 'SUCCESS',
                 f'Projects output to CSV file: {os.path.join(os.getcwd(), "gitlab_projects.csv")}')

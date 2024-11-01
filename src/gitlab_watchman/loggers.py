@@ -317,7 +317,7 @@ class IsDataclass(Protocol):
     __dataclass_fields__: ClassVar[Dict]
 
 
-def export_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
+def log_to_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
     """ Export the data passed in a dataclass to CSV file
 
     Args:

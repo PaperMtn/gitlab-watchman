@@ -11,9 +11,9 @@ from requests.adapters import HTTPAdapter
 from urllib.parse import quote
 from typing import List, Dict
 
-from . import gw_logger
-from . import exceptions
-from .models import (
+from gitlab_watchman import exceptions
+from gitlab_watchman.loggers import StdoutLogger, JSONLogger
+from gitlab_watchman.models import (
     signature,
     note,
     snippet,
@@ -36,7 +36,7 @@ class GitLabAPIClient(object):
     def __init__(self,
                  token: str,
                  base_url: str,
-                 logger: gw_logger.StdoutLogger or gw_logger.JSONLogger):
+                 logger: StdoutLogger | JSONLogger):
         self.token = token
         self.base_url = base_url.rstrip('\\')
         self.per_page = 100
@@ -49,7 +49,7 @@ class GitLabAPIClient(object):
                               status_forcelist=[500, 502, 503, 504])))
         session.headers.update({'Authorization': f'Bearer {self.token}'})
 
-        if isinstance(logger, gw_logger.JSONLogger):
+        if isinstance(logger, JSONLogger):
             self.logger = None
         else:
             self.logger = logger
@@ -360,7 +360,7 @@ class GitLabAPIClient(object):
 
 def initiate_gitlab_connection(token: str,
                                url: str,
-                               logger: gw_logger.StdoutLogger or gw_logger.JSONLogger) -> GitLabAPIClient:
+                               logger: StdoutLogger or JSONLogger) -> GitLabAPIClient:
     """ Create a GitLab API client object
 
     Returns:
@@ -451,7 +451,7 @@ def find_user_owner(user_list: List[Dict]) -> List[Dict]:
 
 
 def search(gitlab: GitLabAPIClient,
-           log_handler: gw_logger.StdoutLogger or gw_logger.JSONLogger,
+           log_handler: StdoutLogger or JSONLogger,
            sig: signature.Signature,
            scope: str,
            verbose: bool,
