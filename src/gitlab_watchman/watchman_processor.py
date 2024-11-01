@@ -1,18 +1,11 @@
 import calendar
-import dataclasses
-import json
 import re
 import time
-import requests
 import multiprocessing
-from requests.exceptions import HTTPError
-from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
-from urllib.parse import quote
 from typing import List, Dict
 
-from gitlab_watchman import exceptions
-from gitlab_watchman.loggers import StdoutLogger, JSONLogger
+from gitlab_watchman.loggers import JSONLogger, StdoutLogger
+from gitlab_watchman.utils import convert_time, deduplicate_results, split_to_chunks
 from gitlab_watchman.models import (
     signature,
     note,
@@ -27,335 +20,9 @@ from gitlab_watchman.models import (
     issue,
     project
 )
+from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 
 ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
-
-
-class GitLabAPIClient(object):
-
-    def __init__(self,
-                 token: str,
-                 base_url: str,
-                 logger: StdoutLogger | JSONLogger):
-        self.token = token
-        self.base_url = base_url.rstrip('\\')
-        self.per_page = 100
-        self.session = session = requests.session()
-        session.mount(self.base_url,
-                      HTTPAdapter(
-                          max_retries=Retry(
-                              total=5,
-                              backoff_factor=0.3,
-                              status_forcelist=[500, 502, 503, 504])))
-        session.headers.update({'Authorization': f'Bearer {self.token}'})
-
-        if isinstance(logger, JSONLogger):
-            self.logger = None
-        else:
-            self.logger = logger
-
-    def _make_request(self,
-                      url: str,
-                      params=None,
-                      data=None,
-                      method='GET',
-                      verify_ssl=True):
-        try:
-            relative_url = '/'.join((self.base_url, 'api/v4', url))
-            response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
-            response.raise_for_status()
-
-            return response
-
-        except HTTPError as http_error:
-            if response.status_code == 400:
-                if response.json().get('message').get('error') == 'Scope not supported without Elasticsearch!':
-                    raise exceptions.ElasticsearchMissingError(params.get('scope'))
-                else:
-                    raise http_error
-            elif response.status_code == 429:
-                if self.logger:
-                    self.logger.log(
-                        mes_type='WARNING',
-                        message='Rate limit hit, cooling off for 90 seconds...')
-                else:
-                    print('Rate limit hit, cooling off for 90 seconds...')
-
-                time.sleep(90)
-                response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
-                response.raise_for_status()
-
-                return response
-            else:
-                raise
-        except:
-            raise
-
-    def _get_pages(self, url, params):
-        first_page = self._make_request(url, params)
-        yield first_page.json()
-        num_pages = int(first_page.headers.get('X-Total-Pages'))
-
-        for page in range(2, num_pages + 1):
-            params['page'] = str(page)
-            next_page = self._make_request(url, params=params).json()
-            yield next_page
-
-    def page_api_search(self,
-                        url: str,
-                        search_scope: str = None,
-                        search_term: str = None) -> List[Dict]:
-        """ Wrapper for GitLab API methods that use page number based pagination
-        Args:
-            search_scope:
-            search_term:
-            url: API endpoint to use
-        Returns:
-            A list of dict objects with responses
-        """
-
-        results = []
-        params = {
-            'per_page': self.per_page,
-            'page': '',
-            'scope': search_scope,
-            'search': search_term,
-        }
-
-        for page in self._get_pages(url, params):
-            results.append(page)
-
-        return [item for sublist in results for item in sublist]
-
-    def get_user_by_id(self, user_id: str) -> json:
-        """ Get a GitLab user by their ID
-
-        Args:
-            user_id: ID of the user
-        Returns:
-            JSON object containing user data
-        """
-        return self._make_request(f'users/{user_id}').json()
-
-    def get_user_by_username(self, username: str) -> json:
-        """ Get a GitLab user by their username
-
-        Args:
-            username: Username of the user
-        Returns:
-            JSON object containing user data
-        """
-        return self._make_request(f'users?username={username}').json()
-
-    def get_token_user(self) -> json:
-        """ Get the details of the user who's token is being used
-
-        Returns:
-            JSON object containing user data
-        """
-        return self._make_request('user').json()
-
-    def get_licence_info(self) -> json:
-        """ Get information on the GitLab licence
-
-        Returns:
-            JSON object containing licence information
-        """
-        return self._make_request('license').json()
-
-    def get_metadata(self) -> Dict:
-        """ Get GitLab project metadata
-
-        Returns:
-            JSON object with GitLab instance information
-        """
-        return self._make_request(f'metadata').json()
-
-    def get_user_info(self) -> Dict:
-        """ Get information on the authenticated user
-
-        Returns:
-            JSON object with user information
-        """
-        return self._make_request(f'user').json()
-
-    def get_instance_level_variables(self) -> Dict:
-        """ Get any instance-level CICD variables
-
-        Returns:
-            JSON object with variable information
-        """
-        return self._make_request(f'admin/ci/variables').json()
-
-    def get_personal_access_tokens(self) -> Dict:
-        """ Get personal access tokens available to this user
-
-        Returns:
-            JSON object with token information
-        """
-        return self._make_request(f'personal_access_tokens').json()
-
-    def get_personal_access_token_value(self, token_id: str) -> Dict:
-        """ Get the value of a personal access token
-
-        Returns:
-            JSON object with token information
-        """
-        return self._make_request(f'personal_access_tokens/{token_id}').json()
-
-    def get_authed_access_token_value(self) -> Dict:
-        """ Get the value of a personal access token
-
-        Returns:
-            JSON object with token information
-        """
-        return self._make_request(f'personal_access_tokens/self').json()
-
-    def get_all_users(self) -> List[Dict]:
-        """ Get all users in the GitLab instance
-
-        Returns:
-            JSON object with user information
-        """
-        return self.page_api_search('users?active=true&without_project_bots=true')
-
-    def get_project(self, project_id: str) -> json:
-        """ Get a GitLab project by its ID
-
-        Args:
-            project_id: ID of the project to return
-        Returns:
-            JSON object with project information
-        """
-        return self._make_request(f'projects/{project_id}').json()
-
-    def get_variables(self, project_id: str) -> json:
-        """ Get publicly available CICD variables for a project
-
-        Args:
-            project_id: ID of the project to search
-        Returns:
-            JSON object containing variable information
-        """
-        return self._make_request(f'projects/{project_id}/variables').json()
-
-    def get_project_members(self, project_id: str) -> json:
-        """ Get members of a project
-
-        Args:
-            project_id: ID of the project to retrieve
-        Returns:
-            JSON object containing project members
-        """
-        return self._make_request(f'projects/{project_id}/members').json()
-
-    def get_file(self,
-                 project_id: str,
-                 path: str,
-                 ref: str) -> json:
-        """ Get a file stored in a project
-
-        Args:
-            project_id: ID of the project to retrieve
-            path: URL encoded full path to file
-            ref: The name of branch, tag or commit
-        Returns:
-            JSON object with file information
-        """
-        path = ''.join((quote(path, safe=''), '?ref=', ref))
-        return self._make_request(f'projects/{project_id}/repository/files/{path}').json()
-
-    def get_group_members(self, group_id: str) -> json:
-        """ Get members of a GitLab group
-
-        Args:
-            group_id: ID of the group to get members for
-        Returns:
-            JSON object with group member information
-        """
-        return self._make_request(f'groups/{group_id}/members').json()
-
-    def get_commit(self,
-                   project_id: str,
-                   commit_id: str) -> json:
-        """ Get commit information
-
-        Args:
-            project_id: ID for the project the commit exists in
-            commit_id: ID of the commit
-        Returns:
-            JSON object containing commit data
-        """
-        return self._make_request(f'projects/{project_id}/repository/commits/{commit_id}').json()
-
-    def get_wiki_page(self,
-                      project_id: str,
-                      slug: str) -> json:
-        """
-
-        Args:
-            project_id: ID of the project the wiki page is in
-            slug: URL slug for the wiki page
-        Returns:
-            JSON object containing wiki data
-
-        """
-        return self._make_request(f'projects/{project_id}/wikis/{slug}').json()
-
-    def global_search(self,
-                      search_term: str = '',
-                      search_scope: str = '') -> List[Dict]:
-        """ Wrapper for the GitLab advanced search API. Uses search term and scope to
-        decide what to search for.
-
-        Args:
-            search_term: Search string to use
-            search_scope: Scope of what to look for (blobs, commits etc.)
-        Returns:
-            List containing JSON objects with matches for the search string
-        """
-        return self.page_api_search('search', search_scope=search_scope, search_term=search_term)
-
-    def get_all_projects(self) -> List[Dict]:
-        """ Get all public projects. Uses keyset pagination, which currently
-         is only available for the Projects resource in the GitLab API
-
-        Returns:
-            List of all projects
-        """
-
-        results = []
-
-        params = {
-            'pagination': 'keyset',
-            'per_page': self.per_page,
-            'order_by': 'id',
-            'sort': 'asc'
-        }
-
-        response = self._make_request('projects', params=params)
-        while 'link' in response.headers:
-            next_url = response.headers.get('link')
-            params = {
-                'pagination': 'keyset',
-                'per_page': self.per_page,
-                'order_by': 'id',
-                'sort': 'asc',
-                'id_after': next_url.split('id_after=')[1].split('&')[0]
-            }
-            response = self._make_request('projects', params=params)
-            for value in response.json():
-                results.append(value)
-
-        return results
-
-    def get_all_groups(self) -> List[Dict]:
-        """ Get all groups in the GitLab instance
-
-        Returns:
-            JSON object with group information
-        """
-        return self.page_api_search('groups?all_available=true')
 
 
 def initiate_gitlab_connection(token: str,
@@ -371,40 +38,6 @@ def initiate_gitlab_connection(token: str,
         return GitLabAPIClient(token, url, logger)
     except Exception as e:
         raise e
-
-
-def _convert_time(timestamp: str) -> int:
-    """Convert ISO 8601 timestamp to epoch """
-
-    pattern = '%Y-%m-%dT%H:%M:%S.%f%z'
-    return int(time.mktime(time.strptime(timestamp, pattern)))
-
-
-def _deduplicate(input_list: List[Dict]) -> List[Dict]:
-    """ Removes duplicates where results are returned by multiple queries
-    Nested class handles JSON encoding for dataclass objects
-
-    Args:
-        input_list: List of dataclass objects
-    Returns:
-        List of JSON objects with duplicates removed
-    """
-
-    class EnhancedJSONEncoder(json.JSONEncoder):
-        def default(self, o):
-            if dataclasses.is_dataclass(o):
-                return dataclasses.asdict(o)
-            return super().default(o)
-
-    json_set = {json.dumps(dictionary, sort_keys=True, cls=EnhancedJSONEncoder) for dictionary in input_list}
-
-    return [json.loads(t) for t in json_set]
-
-
-def _split_to_chunks(input_list, no_of_chunks):
-    """Split the input list into n amount of chunks"""
-
-    return (input_list[i::no_of_chunks] for i in range(no_of_chunks))
 
 
 def find_group_owners(group_members: List[Dict]) -> List[Dict]:
@@ -483,7 +116,7 @@ def search(gitlab: GitLabAPIClient,
             result = multiprocessing.Manager().list()
 
             chunks = multiprocessing.cpu_count() - 1
-            list_of_chunks = _split_to_chunks(search_result_list, chunks)
+            list_of_chunks = split_to_chunks(search_result_list, chunks)
 
             processes = []
 
@@ -523,7 +156,7 @@ def search(gitlab: GitLabAPIClient,
             results.append(list(result))
 
     if results:
-        results = _deduplicate([item for sublist in results for item in sublist])
+        results = deduplicate_results([item for sublist in results for item in sublist])
         log_handler.log('INFO', f'{len(results)} total matches found after filtering')
         return results
     else:
@@ -588,7 +221,7 @@ def _blob_worker(gitlab: GitLabAPIClient,
         if file_object:
             commit_object = commit.create_from_dict(
                 gitlab.get_commit(blob_object.project_id, file_object.commit_id))
-            if _convert_time(commit_object.committed_date) > (now - timeframe) and regex.search(str(blob_object.data)):
+            if convert_time(commit_object.committed_date) > (now - timeframe) and regex.search(str(blob_object.data)):
                 match_string = regex.search(str(blob_object.data)).group(0)
                 if not verbose:
                     setattr(blob_object, 'data', None)
@@ -625,7 +258,7 @@ def _wiki_blob_worker(gitlab: GitLabAPIClient,
     for wb in blob_list:
         wikiblob_object = wiki_blob.create_from_dict(wb)
         project_object = project.create_from_dict(gitlab.get_project(wikiblob_object.project_id))
-        if _convert_time(project_object.last_activity_at) > (now - timeframe) and regex.search(
+        if convert_time(project_object.last_activity_at) > (now - timeframe) and regex.search(
                 str(wikiblob_object.data)):
             match_string = regex.search(str(wikiblob_object.data)).group(0)
             if not verbose:
@@ -662,7 +295,7 @@ def _commit_worker(gitlab: GitLabAPIClient,
 
     for c in commit_list:
         commit_object = commit.create_from_dict(c)
-        if _convert_time(commit_object.committed_date) > (now - timeframe) and \
+        if convert_time(commit_object.committed_date) > (now - timeframe) and \
                 regex.search(str(commit_object.message)):
             project_object = project.create_from_dict(gitlab.get_project(commit_object.project_id))
             results.append({
@@ -696,7 +329,7 @@ def _issue_worker(gitlab: GitLabAPIClient,
     now = calendar.timegm(time.gmtime())
     for i in issue_list:
         issue_object = issue.create_from_dict(i)
-        if _convert_time(issue_object.updated_at) > (now - timeframe) and \
+        if convert_time(issue_object.updated_at) > (now - timeframe) and \
                 regex.search(str(issue_object.description)):
             match_string = regex.search(str(issue_object.description)).group(0)
             if not verbose:
@@ -733,7 +366,7 @@ def _milestone_worker(gitlab: GitLabAPIClient,
     now = calendar.timegm(time.gmtime())
     for m in milestone_list:
         milestone_object = milestone.create_from_dict(m)
-        if _convert_time(milestone_object.updated_at) > (now - timeframe) and \
+        if convert_time(milestone_object.updated_at) > (now - timeframe) and \
                 regex.search(str(milestone_object.description)):
             project_object = project.create_from_dict(gitlab.get_project(milestone_object.project_id))
             match_string = regex.search(str(milestone_object.description)).group(0)
@@ -770,7 +403,7 @@ def _merge_request_worker(gitlab: GitLabAPIClient,
     now = calendar.timegm(time.gmtime())
     for mr in merge_request_list:
         mr_object = merge_request.create_from_dict(mr)
-        if _convert_time(mr_object.updated_at) > (now - timeframe) and \
+        if convert_time(mr_object.updated_at) > (now - timeframe) and \
                 regex.search(str(mr_object.description)):
             project_object = project.create_from_dict(gitlab.get_project(mr_object.project_id))
             match_string = regex.search(str(mr_object.description)).group(0)
@@ -806,7 +439,7 @@ def _note_worker(gitlab_object: GitLabAPIClient,
     now = calendar.timegm(time.gmtime())
     for n in note_list:
         note_object = note.create_from_dict(n)
-        if _convert_time(note_object.created_at) > (now - timeframe) and \
+        if convert_time(note_object.created_at) > (now - timeframe) and \
                 regex.search(str(note_object.body)):
             match_string = regex.search(str(note_object.body)).group(0)
             results.append({
@@ -837,7 +470,7 @@ def _snippet_worker(gitlab_object: GitLabAPIClient,
     now = calendar.timegm(time.gmtime())
     for s in snippet_list:
         snippet_object = snippet.create_from_dict(s)
-        if _convert_time(snippet_object.created_at) > (now - timeframe) and \
+        if convert_time(snippet_object.created_at) > (now - timeframe) and \
                 (regex.search(str(snippet_object.title)) or regex.search(str(snippet_object.description))):
             if regex.search(str(snippet_object.title)):
                 match_string = regex.search(str(snippet_object.title)).group(0)

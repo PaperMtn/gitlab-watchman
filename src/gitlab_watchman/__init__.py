@@ -8,9 +8,8 @@ import datetime
 import traceback
 from importlib import metadata
 from pathlib import Path
-from typing import List
 
-from gitlab_watchman import gitlab_wrapper, exceptions
+from gitlab_watchman import exceptions, watchman_processor
 from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
 from gitlab_watchman.signature_downloader import SignatureDownloader
 from gitlab_watchman.models import (
@@ -19,12 +18,13 @@ from gitlab_watchman.models import (
     project,
     group
 )
+from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 
 SIGNATURES_PATH = (Path(__file__).parents[2] / 'watchman-signatures').resolve()
 OUTPUT_LOGGER = loggers.JSONLogger
 
 
-def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
+def search(gitlab_connection: GitLabAPIClient,
            sig: signature.Signature,
            timeframe: int,
            scope: str,
@@ -43,7 +43,7 @@ def search(gitlab_connection: gitlab_wrapper.GitLabAPIClient,
     try:
         OUTPUT_LOGGER.log('INFO', f'Searching for {sig.name} in {scope}')
 
-        results = gitlab_wrapper.search(
+        results = watchman_processor.search(
             gitlab=gitlab_connection,
             log_handler=OUTPUT_LOGGER,
             sig=sig,
@@ -169,7 +169,7 @@ def main():
         OUTPUT_LOGGER = init_logger(logging_type, debug)
 
         if validate_variables():
-            connection = gitlab_wrapper.initiate_gitlab_connection(
+            connection = watchman_processor.initiate_gitlab_connection(
                 os.environ.get('GITLAB_WATCHMAN_TOKEN'),
                 os.environ.get('GITLAB_WATCHMAN_URL'),
                 OUTPUT_LOGGER)
