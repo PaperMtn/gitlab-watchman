@@ -6,11 +6,12 @@ import sys
 import time
 import datetime
 import traceback
+from importlib import metadata
 from pathlib import Path
 from typing import List
 
 from . import gitlab_wrapper
-from . import __version__
+# from . import __version__
 from . import gw_logger
 from . import signature_updater
 from . import exceptions
@@ -127,7 +128,8 @@ def main():
     global OUTPUT_LOGGER
     try:
         start_time = time.time()
-        parser = argparse.ArgumentParser(description=__version__.__summary__)
+        project_metadata = metadata.metadata('gitlab-watchman')
+        parser = argparse.ArgumentParser(description='Finding exposed secrets and personal data in GitLab')
         required = parser.add_argument_group('required arguments')
         required.add_argument('--timeframe', choices=['d', 'w', 'm', 'a'], dest='time',
                               help='How far back to search: d = 24 hours w = 7 days, m = 30 days, a = all time',
@@ -135,7 +137,7 @@ def main():
         parser.add_argument('--output', '-o', choices=['json', 'stdout'], dest='logging_type',
                             help='Where to send results')
         parser.add_argument('--version', '-v', action='version',
-                            version=f'gitlab-watchman {__version__.__version__}')
+                            version=f'GitLab Watchman: {project_metadata.get("version")}')
         parser.add_argument('--all', '-a', dest='everything', action='store_true',
                             help='Find everything')
         parser.add_argument('--blobs', '-b', dest='blobs', action='store_true',
@@ -202,8 +204,8 @@ def main():
         start_date = time.strftime('%Y-%m-%d', time.localtime(now - tf))
 
         OUTPUT_LOGGER.log('SUCCESS', 'GitLab Watchman started execution')
-        OUTPUT_LOGGER.log('INFO', f'Version: {__version__.__version__}')
-        OUTPUT_LOGGER.log('INFO', f'Created by: {__version__.__author__} - {__version__.__email__}')
+        OUTPUT_LOGGER.log('INFO', f'Version: {project_metadata.get("version")}')
+        OUTPUT_LOGGER.log('INFO', f'Created by: PaperMtn <papermtn@protonmail.com>')
         OUTPUT_LOGGER.log('INFO', f'Searching GitLab instance {os.environ.get("GITLAB_WATCHMAN_URL")}')
         OUTPUT_LOGGER.log('INFO', f'Searching from {start_date} to {today}')
         if verbose:
