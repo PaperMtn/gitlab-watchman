@@ -1,13 +1,20 @@
 # syntax=docker/dockerfile:1
+FROM python:3.12-slim-bullseye AS builder
+WORKDIR /opt/gitlab-watchman
+COPY . .
+RUN pip install poetry
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-dev && \
+    poetry build
 
-FROM python:3.10
-COPY . /opt/gitlab-watchman
+FROM python:3.12-slim-bullseye
 WORKDIR /opt/gitlab-watchman
-ENV PYTHONPATH=/opt/gitlab-watchman GITLAB_WATCHMAN_TOKEN="" GITLAB_WATCHMAN_URL=""
-RUN pip3 install -r requirements.txt build && \
-    chmod -R 700 . && \
-    python3 -m build && \
-    python3 -m pip install dist/*.whl
+COPY --from=builder /opt/gitlab-watchman/dist/*.whl /opt/gitlab-watchman/dist/
+COPY --from=builder /opt/gitlab-watchman/pyproject.toml /opt/gitlab-watchman/poetry.lock /opt/gitlab-watchman/
+ENV PYTHONPATH=/opt/gitlab-watchman \
+    GITLAB_WATCHMAN_TOKEN="" \
+    GITLAB_WATCHMAN_URL=""
+RUN pip install dist/*.whl && \
+    chmod -R 700 .
 STOPSIGNAL SIGINT
-WORKDIR /opt/gitlab-watchman
 ENTRYPOINT ["gitlab-watchman"]

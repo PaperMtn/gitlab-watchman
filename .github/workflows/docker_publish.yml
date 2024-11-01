@@ -1,8 +1,8 @@
-name: ci
+name: Publish Docker Image
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
 
 jobs:
   build:
