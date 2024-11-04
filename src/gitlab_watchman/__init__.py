@@ -257,7 +257,7 @@ def main():
                 f'Projects output to CSV file: {os.path.join(os.getcwd(), "gitlab_projects.csv")}')
 
         if everything:
-            OUTPUT_LOGGER.log('INFO','Getting everything...')
+            OUTPUT_LOGGER.log('INFO', 'Getting everything...')
             perform_search(connection, signature_list, timeframe, verbose,
                            [
                                'blobs',
@@ -274,25 +274,25 @@ def main():
                 OUTPUT_LOGGER.log('INFO', 'Searching blobs')
                 perform_search(connection, signature_list, timeframe, verbose, ['blobs'])
             if commits:
-                OUTPUT_LOGGER.log('INFO','Searching commits')
+                OUTPUT_LOGGER.log('INFO', 'Searching commits')
                 perform_search(connection, signature_list, timeframe, verbose, ['commits'])
             if issues:
-                OUTPUT_LOGGER.log('INFO','Searching issues')
+                OUTPUT_LOGGER.log('INFO', 'Searching issues')
                 perform_search(connection, signature_list, timeframe, verbose, ['issues'])
             if merge:
-                OUTPUT_LOGGER.log('INFO','Searching merge requests')
+                OUTPUT_LOGGER.log('INFO', 'Searching merge requests')
                 perform_search(connection, signature_list, timeframe, verbose, ['merge_requests'])
             if wiki:
-                OUTPUT_LOGGER.log('INFO','Searching wiki blobs')
+                OUTPUT_LOGGER.log('INFO', 'Searching wiki blobs')
                 perform_search(connection, signature_list, timeframe, verbose, ['wiki_blobs'])
             if milestones:
-                OUTPUT_LOGGER.log('INFO','Searching milestones')
+                OUTPUT_LOGGER.log('INFO', 'Searching milestones')
                 perform_search(connection, signature_list, timeframe, verbose, ['milestones'])
             if notes:
-                OUTPUT_LOGGER.log('INFO','Searching notes')
+                OUTPUT_LOGGER.log('INFO', 'Searching notes')
                 perform_search(connection, signature_list, timeframe, verbose, ['notes'])
             if snippets:
-                OUTPUT_LOGGER.log('INFO','Searching snippets')
+                OUTPUT_LOGGER.log('INFO', 'Searching snippets')
                 perform_search(connection, signature_list, timeframe, verbose, ['snippet_titles'])
 
         OUTPUT_LOGGER.log('SUCCESS', f'GitLab Watchman finished execution - Execution time:'
