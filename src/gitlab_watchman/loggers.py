@@ -207,7 +207,7 @@ class StdoutLogger:
             type_colorer = re.compile(r'([A-Z]{3,})', re.VERBOSE)
             mes_type = type_colorer.sub(high_color + r'\1' + base_color, mes_type.lower())
             # Make header words coloured
-            header_words = re.compile('([A-Z_0-9]{2,}:)\s', re.VERBOSE)
+            header_words = re.compile(r'([A-Z_0-9]{2,}:)\s', re.VERBOSE)
             message = header_words.sub(key_color + Style.BRIGHT + r'\1 ' + Fore.WHITE + Style.NORMAL, str(message))
             sys.stdout.write(
                 f"{reset_all}{style}[{base_color}{mes_type}{Fore.WHITE}]{style} {message}{Fore.WHITE}{Style.NORMAL}\n")
@@ -317,7 +317,7 @@ class IsDataclass(Protocol):
     __dataclass_fields__: ClassVar[Dict]
 
 
-def export_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
+def log_to_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
     """ Export the data passed in a dataclass to CSV file
 
     Args:
