@@ -2,9 +2,14 @@
 ### Changed
 - Package management and deployment moved to Poetry
 - Docker build process improved using multi-stage builds. The Dockerfile now doesn't contain any unnecessary files, and is much smaller.
+- Refactor to separate GitLab client and Watchman processing into modules
 
 ### Added
 - Signatures now loaded into memory instead of being saved to disk. This allows for running on read-only filesystems.
+- Tests for Docker build
+
+### Fixed
+- Error when enumerating pages when there is no `X-Total-Pages` header
 
 ## [3.0.0] - 2023-05-15
 This major version release brings multiple updates to GitLab Watchman in usability, functionality and behind the scenes improvements.

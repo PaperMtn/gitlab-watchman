@@ -7,11 +7,11 @@ import time
 import datetime
 import traceback
 from importlib import metadata
-from pathlib import Path
+from typing import List
 
 from gitlab_watchman import exceptions, watchman_processor
-from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
 from gitlab_watchman.signature_downloader import SignatureDownloader
+from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
 from gitlab_watchman.models import (
     signature,
     user,
@@ -19,9 +19,6 @@ from gitlab_watchman.models import (
     group
 )
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
-
-SIGNATURES_PATH = (Path(__file__).parents[2] / 'watchman-signatures').resolve()
-OUTPUT_LOGGER = loggers.JSONLogger
 
 
 def search(gitlab_connection: GitLabAPIClient,
@@ -52,12 +49,13 @@ def search(gitlab_connection: GitLabAPIClient,
             timeframe=timeframe)
         if results:
             for log_data in results:
-                OUTPUT_LOGGER.log('NOTIFY',
-                                  log_data,
-                                  scope=scope,
-                                  severity=sig.severity,
-                                  detect_type=sig.name,
-                                  notify_type='result')
+                OUTPUT_LOGGER.log(
+                    'NOTIFY',
+                    log_data,
+                    scope=scope,
+                    severity=sig.severity,
+                    detect_type=sig.name,
+                    notify_type='result')
     except exceptions.ElasticsearchMissingError as e:
         OUTPUT_LOGGER.log('WARNING', e)
         OUTPUT_LOGGER.log('DEBUG', traceback.format_exc())
@@ -65,7 +63,29 @@ def search(gitlab_connection: GitLabAPIClient,
         raise e
 
 
-def init_logger(logging_type: str, debug: bool) -> JSONLogger or StdoutLogger:
+def perform_search(gitlab_connection: GitLabAPIClient,
+                   sig_list: List[signature.Signature],
+                   timeframe: int,
+                   verbose_logging: bool,
+                   scopes: List[str]):
+    """ Helper function to perform the search for each signature and each scope
+
+    Args:
+        gitlab_connection: GitLab API object
+        sig_list: List of Signature objects
+        timeframe: Timeframe to search for
+        verbose_logging: Whether to use verbose logging or not
+        scopes: List of scopes to search
+    """
+
+    for sig in sig_list:
+        if sig.scope:
+            for scope in scopes:
+                if scope in sig.scope:
+                    search(gitlab_connection, sig, timeframe, scope, verbose_logging)
+
+
+def init_logger(logging_type: str, debug: bool) -> JSONLogger | StdoutLogger:
     """ Create a logger object. Defaults to stdout if no option is given
 
     Args:
@@ -77,8 +97,7 @@ def init_logger(logging_type: str, debug: bool) -> JSONLogger or StdoutLogger:
 
     if not logging_type or logging_type == 'stdout':
         return StdoutLogger(debug=debug)
-    else:
-        return JSONLogger(debug=debug)
+    return JSONLogger(debug=debug)
 
 
 def validate_variables() -> bool:
@@ -88,17 +107,13 @@ def validate_variables() -> bool:
         True if both variables are set
     """
 
-    if os.environ.get('GITLAB_WATCHMAN_TOKEN') and os.environ.get('GITLAB_WATCHMAN_URL'):
-        return True
-    else:
-        try:
-            os.environ['GITLAB_WATCHMAN_TOKEN']
-        except:
-            raise exceptions.MissingEnvVarError('GITLAB_WATCHMAN_TOKEN')
-        try:
-            os.environ['GITLAB_WATCHMAN_URL']
-        except:
-            raise exceptions.MissingEnvVarError('GITLAB_WATCHMAN_URL')
+    required_vars = ['GITLAB_WATCHMAN_TOKEN', 'GITLAB_WATCHMAN_URL']
+
+    for var in required_vars:
+        if var not in os.environ:
+            raise exceptions.MissingEnvVarError(var)
+
+    return True
 
 
 def main():
@@ -142,7 +157,6 @@ def main():
                                  'This includes more fields, but is larger')
 
         args = parser.parse_args()
-        tm = args.time
         everything = args.everything
         blobs = args.blobs
         commits = args.commits
@@ -157,14 +171,13 @@ def main():
         debug = args.debug
         enum = args.enum
 
-        if tm == 'd':
-            tf = 86400
-        elif tm == 'w':
-            tf = 604800
-        elif tm == 'm':
-            tf = 2592000
-        else:
-            tf = calendar.timegm(time.gmtime()) + 1576800000
+        tf_options = {
+            'd': 86400,
+            'w': 604800,
+            'm': 2592000,
+            'a': calendar.timegm(time.gmtime()) + 1576800000
+        }
+        timeframe = tf_options.get(args.time)
 
         OUTPUT_LOGGER = init_logger(logging_type, debug)
 
@@ -178,7 +191,7 @@ def main():
 
         now = int(time.time())
         today = datetime.date.today().strftime('%Y-%m-%d')
-        start_date = time.strftime('%Y-%m-%d', time.localtime(now - tf))
+        start_date = time.strftime('%Y-%m-%d', time.localtime(now - timeframe))
 
         OUTPUT_LOGGER.log('SUCCESS', 'GitLab Watchman started execution')
         OUTPUT_LOGGER.log('INFO', f'Version: {project_metadata.get("version")}')
@@ -244,65 +257,43 @@ def main():
                 f'Projects output to CSV file: {os.path.join(os.getcwd(), "gitlab_projects.csv")}')
 
         if everything:
-            OUTPUT_LOGGER.log('INFO', 'Getting everything...')
-            for sig in signature_list:
-                if 'blobs' in sig.scope:
-                    search(connection, sig, tf, 'blobs', verbose)
-                if 'commits' in sig.scope:
-                    search(connection, sig, tf, 'commits', verbose)
-                if 'issues' in sig.scope:
-                    search(connection, sig, tf, 'issues', verbose)
-                if 'merge_requests' in sig.scope:
-                    search(connection, sig, tf, 'merge_requests', verbose)
-                if 'wiki_blobs' in sig.scope:
-                    search(connection, sig, tf, 'wiki_blobs', verbose)
-                if 'milestones' in sig.scope:
-                    search(connection, sig, tf, 'milestones', verbose)
-                if 'notes' in sig.scope:
-                    search(connection, sig, tf, 'notes', verbose)
-                if 'snippet_titles' in sig.scope:
-                    search(connection, sig, tf, 'snippet_titles', verbose)
+            OUTPUT_LOGGER.log('INFO','Getting everything...')
+            perform_search(connection, signature_list, timeframe, verbose,
+                           [
+                               'blobs',
+                               'commits',
+                               'issues',
+                               'merge_requests',
+                               'wiki_blobs',
+                               'milestones',
+                               'notes',
+                               'snippet_titles'
+                           ])
         else:
             if blobs:
                 OUTPUT_LOGGER.log('INFO', 'Searching blobs')
-                for sig in signature_list:
-                    if 'blobs' in sig.scope:
-                        search(connection, sig, tf, 'blobs', verbose)
+                perform_search(connection, signature_list, timeframe, verbose, ['blobs'])
             if commits:
-                OUTPUT_LOGGER.log('INFO', 'Searching commits', verbose)
-                for sig in signature_list:
-                    if 'commits' in sig.scope:
-                        search(connection, sig, tf, 'commits', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching commits')
+                perform_search(connection, signature_list, timeframe, verbose, ['commits'])
             if issues:
-                OUTPUT_LOGGER.log('INFO', 'Searching issues')
-                for sig in signature_list:
-                    if 'issues' in sig.scope:
-                        search(connection, sig, tf, 'issues', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching issues')
+                perform_search(connection, signature_list, timeframe, verbose, ['issues'])
             if merge:
-                OUTPUT_LOGGER.log('INFO', 'Searching merge requests')
-                for sig in signature_list:
-                    if 'merge_requests' in sig.scope:
-                        search(connection, sig, tf, 'merge_requests', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching merge requests')
+                perform_search(connection, signature_list, timeframe, verbose, ['merge_requests'])
             if wiki:
-                OUTPUT_LOGGER.log('INFO', 'Searching wiki blobs')
-                for sig in signature_list:
-                    if 'wiki_blobs' in sig.scope:
-                        search(connection, sig, tf, 'wiki_blobs', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching wiki blobs')
+                perform_search(connection, signature_list, timeframe, verbose, ['wiki_blobs'])
             if milestones:
-                OUTPUT_LOGGER.log('INFO', 'Searching milestones')
-                for sig in signature_list:
-                    if 'milestones' in sig.scope:
-                        search(connection, sig, tf, 'milestones', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching milestones')
+                perform_search(connection, signature_list, timeframe, verbose, ['milestones'])
             if notes:
-                OUTPUT_LOGGER.log('INFO', 'Searching notes')
-                for sig in signature_list:
-                    if 'notes' in sig.scope:
-                        search(connection, sig, tf, 'notes', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching notes')
+                perform_search(connection, signature_list, timeframe, verbose, ['notes'])
             if snippets:
-                OUTPUT_LOGGER.log('INFO', 'Searching snippets')
-                for sig in signature_list:
-                    if 'snippet_titles' in sig.scope:
-                        search(connection, sig, tf, 'snippet_titles', verbose)
+                OUTPUT_LOGGER.log('INFO','Searching snippets')
+                perform_search(connection, signature_list, timeframe, verbose, ['snippet_titles'])
 
         OUTPUT_LOGGER.log('SUCCESS', f'GitLab Watchman finished execution - Execution time:'
                                      f' {str(datetime.timedelta(seconds=time.time() - start_time))}')

@@ -15,11 +15,11 @@ SIGNATURE_URL = 'https://github.com/PaperMtn/watchman-signatures/archive/main.zi
 
 
 class SignatureDownloader:
-    def __init__(self, logger: JSONLogger or StdoutLogger):
+    def __init__(self, logger: JSONLogger | StdoutLogger):
         """ Initializes a SignatureDownloader object.
 
         Args:
-            logger (JSONLogger or StdoutLogger): The logger object to use for logging.
+            logger (JSONLogger | StdoutLogger): The logger object to use for logging.
         Returns:
             None
         """

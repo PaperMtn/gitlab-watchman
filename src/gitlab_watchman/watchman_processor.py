@@ -27,7 +27,7 @@ ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
 def initiate_gitlab_connection(token: str,
                                url: str,
-                               logger: StdoutLogger or JSONLogger) -> GitLabAPIClient:
+                               logger: StdoutLogger | JSONLogger) -> GitLabAPIClient:
     """ Create a GitLab API client object
 
     Returns:
@@ -84,7 +84,7 @@ def find_user_owner(user_list: List[Dict]) -> List[Dict]:
 
 
 def search(gitlab: GitLabAPIClient,
-           log_handler: StdoutLogger or JSONLogger,
+           log_handler: StdoutLogger | JSONLogger,
            sig: signature.Signature,
            scope: str,
            verbose: bool,
