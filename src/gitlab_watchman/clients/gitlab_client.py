@@ -1,29 +1,59 @@
 import calendar
-import json
 import time
+from typing import List, Dict, Any
+
 import requests
-from requests.exceptions import HTTPError
-from urllib3.util import Retry
+from gitlab import Gitlab
+from gitlab.const import SearchScope
+from gitlab.v4.objects import User
+from gitlab.exceptions import (
+    GitlabLicenseError,
+    GitlabAuthenticationError,
+    GitlabGetError,
+    GitlabListError
+)
 from requests.adapters import HTTPAdapter
-from urllib.parse import quote
-from typing import List, Dict
+from urllib3.util import Retry
 
-from gitlab_watchman import exceptions
 from gitlab_watchman.loggers import StdoutLogger, JSONLogger
-
+from gitlab_watchman.exceptions import (
+    GitLabWatchmanAuthenticationError,
+    GitLabWatchmanGetObjectError,
+    GitLabWatchmanNotAuthorisedError
+)
 
 ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
 
-class GitLabAPIClient(object):
+def exception_handler(func):
+    """ Decorator to handle exceptions raised by the GitLab API """
+    def inner_function(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except GitlabAuthenticationError as e:
+            raise GitLabWatchmanAuthenticationError(e.error_message) from e
+        except (GitlabGetError, GitlabListError, GitlabLicenseError) as e:
+            if e.response_code == 403:
+                raise GitLabWatchmanNotAuthorisedError(e.error_message, func) from e
+            else:
+                raise GitLabWatchmanGetObjectError(e.error_message, func) from e
+        except IndexError as e:
+            raise GitLabWatchmanGetObjectError('Object not found', func) from e
+        except Exception as e:
+            raise e
+    return inner_function
 
+
+class GitLabAPIClient:
+
+    @exception_handler
     def __init__(self,
                  token: str,
                  base_url: str,
                  logger: StdoutLogger | JSONLogger):
         self.token = token
         self.base_url = base_url.rstrip('\\')
-        self.per_page = 100
+        self.logger = logger
         self.session = session = requests.session()
         session.mount(self.base_url,
                       HTTPAdapter(
@@ -32,181 +62,98 @@ class GitLabAPIClient(object):
                               backoff_factor=0.3,
                               status_forcelist=[500, 502, 503, 504])))
         session.headers.update({'Authorization': f'Bearer {self.token}'})
+        self.gitlab_client = Gitlab(
+            url=self.base_url,
+            private_token=self.token,
+            session=self.session,
+            per_page=100,
+            retry_transient_errors=True)
+        self.gitlab_client.auth()
 
         if isinstance(logger, JSONLogger):
             self.logger = None
         else:
             self.logger = logger
 
-    def _make_request(self,
-                      url: str,
-                      params=None,
-                      data=None,
-                      method='GET',
-                      verify_ssl=True):
-        try:
-            relative_url = '/'.join((self.base_url, 'api/v4', url))
-            response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
-            response.raise_for_status()
 
-            return response
 
-        except HTTPError as http_error:
-            if response.status_code == 400:
-                if response.json().get('message').get('error') == 'Scope not supported without Elasticsearch!':
-                    raise exceptions.ElasticsearchMissingError(params.get('scope'))
-                else:
-                    raise http_error
-            elif response.status_code == 429:
-                if self.logger:
-                    self.logger.log(
-                        mes_type='WARNING',
-                        message='Rate limit hit, cooling off for 90 seconds...')
-                else:
-                    print('Rate limit hit, cooling off for 90 seconds...')
+    @exception_handler
+    def get_user_info(self) -> Dict[str, Any]:
+        """ Get information on the authenticated user
 
-                time.sleep(90)
-                response = self.session.request(method, relative_url, params=params, data=data, verify=verify_ssl)
-                response.raise_for_status()
-
-                return response
-            else:
-                raise
-        except:
-            raise
-
-    def _get_pages(self, url, params):
-        first_page = self._make_request(url, params)
-        yield first_page.json()
-        try:
-            num_pages = int(first_page.headers.get('X-Total-Pages'))
-        except TypeError:
-            num_pages = 1
-
-        for page in range(2, num_pages + 1):
-            params['page'] = str(page)
-            next_page = self._make_request(url, params=params).json()
-            yield next_page
-
-    def page_api_search(self,
-                        url: str,
-                        search_scope: str = None,
-                        search_term: str = None) -> List[Dict]:
-        """ Wrapper for GitLab API methods that use page number based pagination
-        Args:
-            search_scope:
-            search_term:
-            url: API endpoint to use
         Returns:
-            A list of dict objects with responses
+            User object with user information
         """
+        return self.gitlab_client.user.asdict()
 
-        results = []
-        params = {
-            'per_page': self.per_page,
-            'page': '',
-            'scope': search_scope,
-            'search': search_term,
-        }
+    @exception_handler
+    def get_all_users(self) -> List[User]:
+        """ Get all users in the GitLab instance
 
-        for page in self._get_pages(url, params):
-            results.append(page)
-
-        return [item for sublist in results for item in sublist]
-
-    def get_user_by_id(self, user_id: str) -> json:
-        """ Get a GitLab user by their ID
-
-        Args:
-            user_id: ID of the user
         Returns:
-            JSON object containing user data
+            User object with user information
         """
-        return self._make_request(f'users/{user_id}').json()
+        return self.gitlab_client.users.list(get_all=True, active=True, without_project_bots=True)
 
-    def get_user_by_username(self, username: str) -> json:
+    @exception_handler
+    def get_user_by_username(self, username: str) -> Dict[str, Any] | None:
         """ Get a GitLab user by their username
 
         Args:
             username: Username of the user
         Returns:
-            JSON object containing user data
+            User object containing user data
         """
-        return self._make_request(f'users?username={username}').json()
+        return self.gitlab_client.users.list(username=username)[0].asdict()
 
-    def get_token_user(self) -> json:
-        """ Get the details of the user who's token is being used
+    @exception_handler
+    def get_settings(self) -> Dict[str, Any]:
+        """ Get the settings for the GitLab instance
 
         Returns:
-            JSON object containing user data
+            JSON object with settings
         """
-        return self._make_request('user').json()
+        return self.gitlab_client.settings.get().asdict()
 
-    def get_licence_info(self) -> json:
-        """ Get information on the GitLab licence
+    @exception_handler
+    def get_licence(self) -> Dict[str, Any]:
+        """ Get the licence for the GitLab instance
 
         Returns:
-            JSON object containing licence information
+            JSON object with metadata
         """
-        return self._make_request('license').json()
+        return self.gitlab_client.get_license()
 
-    def get_metadata(self) -> Dict:
+    @exception_handler
+    def get_metadata(self) -> Dict[str, Any]:
         """ Get GitLab project metadata
 
         Returns:
             JSON object with GitLab instance information
         """
-        return self._make_request(f'metadata').json()
+        return self.session.get(f'{self.base_url}/api/v4/metadata').json()
 
-    def get_user_info(self) -> Dict:
-        """ Get information on the authenticated user
-
-        Returns:
-            JSON object with user information
-        """
-        return self._make_request(f'user').json()
-
-    def get_instance_level_variables(self) -> Dict:
+    @exception_handler
+    def get_instance_level_variables(self) -> List[Any]:
         """ Get any instance-level CICD variables
 
         Returns:
             JSON object with variable information
         """
-        return self._make_request(f'admin/ci/variables').json()
 
-    def get_personal_access_tokens(self) -> Dict:
-        """ Get personal access tokens available to this user
+        return self.gitlab_client.variables.list(as_list=True)
 
-        Returns:
-            JSON object with token information
-        """
-        return self._make_request(f'personal_access_tokens').json()
-
-    def get_personal_access_token_value(self, token_id: str) -> Dict:
-        """ Get the value of a personal access token
-
-        Returns:
-            JSON object with token information
-        """
-        return self._make_request(f'personal_access_tokens/{token_id}').json()
-
+    @exception_handler
     def get_authed_access_token_value(self) -> Dict:
         """ Get the value of a personal access token
 
         Returns:
             JSON object with token information
         """
-        return self._make_request(f'personal_access_tokens/self').json()
+        return self.session.get(f'{self.base_url}/api/v4/personal_access_tokens/self').json()
 
-    def get_all_users(self) -> List[Dict]:
-        """ Get all users in the GitLab instance
-
-        Returns:
-            JSON object with user information
-        """
-        return self.page_api_search('users?active=true&without_project_bots=true')
-
-    def get_project(self, project_id: str) -> json:
+    @exception_handler
+    def get_project(self, project_id: str) -> Dict[str, Any]:
         """ Get a GitLab project by its ID
 
         Args:
@@ -214,32 +161,38 @@ class GitLabAPIClient(object):
         Returns:
             JSON object with project information
         """
-        return self._make_request(f'projects/{project_id}').json()
+        return self.gitlab_client.projects.get(project_id).asdict()
 
-    def get_variables(self, project_id: str) -> json:
-        """ Get publicly available CICD variables for a project
+    @exception_handler
+    def get_all_projects(self) -> List[Dict]:
+        """ Get all GitLab projects.
 
-        Args:
-            project_id: ID of the project to search
         Returns:
-            JSON object containing variable information
+            List of all projects
         """
-        return self._make_request(f'projects/{project_id}/variables').json()
+        projects = self.gitlab_client.projects.list(all=True, as_list=True)
+        return [project.asdict() for project in projects]
 
-    def get_project_members(self, project_id: str) -> json:
+    @exception_handler
+    def get_project_members(self, project_id: str) -> List[Dict[str, Any]]:
         """ Get members of a project
 
         Args:
             project_id: ID of the project to retrieve
         Returns:
-            JSON object containing project members
+            RESTObject object containing project members
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self._make_request(f'projects/{project_id}/members').json()
+        members = self.gitlab_client.projects.get(project_id).members.list(as_list=True)
+        return [member.asdict() for member in members]
 
+    @exception_handler
     def get_file(self,
                  project_id: str,
                  path: str,
-                 ref: str) -> json:
+                 ref: str) -> Dict[str, Any]:
         """ Get a file stored in a project
 
         Args:
@@ -247,99 +200,125 @@ class GitLabAPIClient(object):
             path: URL encoded full path to file
             ref: The name of branch, tag or commit
         Returns:
-            JSON object with file information
+            JSON object with the file information
         """
-        path = ''.join((quote(path, safe=''), '?ref=', ref))
-        return self._make_request(f'projects/{project_id}/repository/files/{path}').json()
+        return self.gitlab_client.projects.get(project_id).files.get(
+            file_path=path, ref=ref).asdict()
 
-    def get_group_members(self, group_id: str) -> json:
+    @exception_handler
+    def get_group(self, group_id: str) -> Dict[str, Any]:
+        """ Get a GitLab group by its ID
+
+        Args:
+            group_id: ID of the group to return
+        Returns:
+            Dict with group information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
+        """
+        return self.gitlab_client.groups.get(group_id).asdict()
+
+    @exception_handler
+    def get_all_groups(self) -> List[Dict]:
+        """ Get all groups visible to the authenticated user
+
+        Returns:
+            Dict with group information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
+        """
+        groups = self.gitlab_client.groups.list(as_list=True)
+        return [group.asdict() for group in groups]
+
+    @exception_handler
+    def get_group_members(self, group_id: str) -> List[Dict]:
         """ Get members of a GitLab group
 
         Args:
             group_id: ID of the group to get members for
         Returns:
-            JSON object with group member information
+            Dict object with group member information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self._make_request(f'groups/{group_id}/members').json()
+        members = self.gitlab_client.groups.get(group_id).members.list(as_list=True)
+        return [member.asdict() for member in members]
 
+    @exception_handler
     def get_commit(self,
                    project_id: str,
-                   commit_id: str) -> json:
+                   commit_id: str) -> Dict[str, Any]:
         """ Get commit information
 
         Args:
             project_id: ID for the project the commit exists in
             commit_id: ID of the commit
         Returns:
-            JSON object containing commit data
+            Dict object containing commit data
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self._make_request(f'projects/{project_id}/repository/commits/{commit_id}').json()
+        return self.gitlab_client.projects.get(project_id).commits.get(commit_id).asdict()
 
+    @exception_handler
     def get_wiki_page(self,
                       project_id: str,
-                      slug: str) -> json:
-        """
+                      slug: str) -> Dict[str, Any]:
+        """ Get a wiki page from a project
 
         Args:
             project_id: ID of the project the wiki page is in
             slug: URL slug for the wiki page
         Returns:
             JSON object containing wiki data
-
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self._make_request(f'projects/{project_id}/wikis/{slug}').json()
+        return self.gitlab_client.projects.get(project_id).wikis.get(slug).asdict()
 
+    @exception_handler
     def global_search(self,
                       search_term: str = '',
-                      search_scope: str = '') -> List[Dict]:
-        """ Wrapper for the GitLab advanced search API. Uses search term and scope to
+                      search_scope: str = '') -> List[Dict[str, Any]]:
+        """ Search using the GitLab advanced search API. Uses search term and scope to
         decide what to search for.
 
         Args:
             search_term: Search string to use
-            search_scope: Scope of what to look for (blobs, commits etc.)
+            search_scope: Scope of what to look for. One of:
+                - blobs
+                - commits
+                - issues
+                - merge_requests
+                - wiki_blobs
+                - milestones
+                - notes
+                - snippet_titles
         Returns:
-            List containing JSON objects with matches for the search string
+            List containing Dict objects with matches for the search string
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self.page_api_search('search', search_scope=search_scope, search_term=search_term)
-
-    def get_all_projects(self) -> List[Dict]:
-        """ Get all public projects. Uses keyset pagination, which currently
-         is only available for the Projects resource in the GitLab API
-
-        Returns:
-            List of all projects
-        """
-
-        results = []
-
-        params = {
-            'pagination': 'keyset',
-            'per_page': self.per_page,
-            'order_by': 'id',
-            'sort': 'asc'
+        scope_map = {
+            'blobs': SearchScope.BLOBS,
+            'commits': SearchScope.COMMITS,
+            'issues': SearchScope.ISSUES,
+            'merge_requests': SearchScope.MERGE_REQUESTS,
+            'wiki_blobs': SearchScope.WIKI_BLOBS,
+            'milestones': SearchScope.MILESTONES,
+            'notes': SearchScope.PROJECT_NOTES,
+            'snippet_titles': SearchScope.GLOBAL_SNIPPET_TITLES,
         }
 
-        response = self._make_request('projects', params=params)
-        while 'link' in response.headers:
-            next_url = response.headers.get('link')
-            params = {
-                'pagination': 'keyset',
-                'per_page': self.per_page,
-                'order_by': 'id',
-                'sort': 'asc',
-                'id_after': next_url.split('id_after=')[1].split('&')[0]
-            }
-            response = self._make_request('projects', params=params)
-            for value in response.json():
-                results.append(value)
-
-        return results
-
-    def get_all_groups(self) -> List[Dict]:
-        """ Get all groups in the GitLab instance
-
-        Returns:
-            JSON object with group information
-        """
-        return self.page_api_search('groups?all_available=true')
+        return self.gitlab_client.search(
+            search=search_term,
+            scope=scope_map.get(search_scope, SearchScope.BLOBS),
+            all=True,
+            as_list=True,
+            per_page=100)
