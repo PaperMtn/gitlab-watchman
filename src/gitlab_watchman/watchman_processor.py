@@ -2,10 +2,13 @@ import calendar
 import re
 import time
 import multiprocessing
+import traceback
 from typing import List, Dict
+from venv import logger
 
 from gitlab_watchman.loggers import JSONLogger, StdoutLogger
 from gitlab_watchman.utils import convert_time, deduplicate_results, split_to_chunks
+from gitlab_watchman.exceptions import GitLabWatchmanGetObjectError
 from gitlab_watchman.models import (
     signature,
     note,
@@ -18,7 +21,8 @@ from gitlab_watchman.models import (
     merge_request,
     milestone,
     issue,
-    project
+    project,
+    group
 )
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 
@@ -145,7 +149,8 @@ def search(gitlab: GitLabAPIClient,
                                                 regex,
                                                 timeframe,
                                                 result,
-                                                verbose
+                                                verbose,
+                                                log_handler
                                             ))
                 processes.append(p)
                 p.start()
@@ -240,7 +245,8 @@ def _wiki_blob_worker(gitlab: GitLabAPIClient,
                       regex: re.Pattern,
                       timeframe: int,
                       results: List,
-                      verbose: bool) -> List[Dict]:
+                      verbose: bool,
+                      log_handler: JSONLogger | StdoutLogger) -> List[Dict]:
     """ MULTIPROCESSING WORKER - Iterates through a list of wiki_blobs to find matches against the regex
 
     Args:
@@ -254,21 +260,37 @@ def _wiki_blob_worker(gitlab: GitLabAPIClient,
         Multiprocessing list to be combined by the parent process
     """
 
-    now = calendar.timegm(time.gmtime())
     for wb in blob_list:
-        wikiblob_object = wiki_blob.create_from_dict(wb)
-        project_object = project.create_from_dict(gitlab.get_project(wikiblob_object.project_id))
-        if convert_time(project_object.last_activity_at) > (now - timeframe) and regex.search(
-                str(wikiblob_object.data)):
-            match_string = regex.search(str(wikiblob_object.data)).group(0)
-            if not verbose:
-                setattr(wikiblob_object, 'data', None)
-            results.append({
-                'match_string': match_string,
-                'wiki_blob': wikiblob_object,
-                'project': _populate_project_owners(gitlab, project_object),
-            })
+        try:
+            wikiblob_object = wiki_blob.create_from_dict(wb)
+            project_wiki = False
+            group_wiki = False
+            if wb.get('project_id'):
+                project_object = project.create_from_dict(gitlab.get_project(wb.get('project_id')))
+                project_wiki = True
+            if wb.get('group_id'):
+                group_object = group.create_from_dict(gitlab.get_group(wb.get('group_id')))
+                group_wiki = True
 
+            if regex.search(
+                    str(wikiblob_object.data)):
+                match_string = regex.search(str(wikiblob_object.data)).group(0)
+                if not verbose:
+                    setattr(wikiblob_object, 'data', None)
+                results_dict ={
+                    'match_string': match_string,
+                    'wiki_blob': wikiblob_object,
+                    'group_wiki': group_wiki,
+                    'project_wiki': project_wiki,
+                }
+                if project_wiki:
+                    results_dict['project'] = _populate_project_owners(gitlab, project_object)
+                if group_wiki:
+                    results_dict['group'] = group_object
+                results.append(results_dict)
+        except GitLabWatchmanGetObjectError as e:
+            log_handler.log('WARNING', e)
+            log_handler.log('DEBUG', traceback.format_exc())
     return results
 
 

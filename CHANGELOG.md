@@ -3,12 +3,17 @@
 - Package management and deployment moved to Poetry
 - Docker build process improved using multi-stage builds. The Dockerfile now doesn't contain any unnecessary files, and is much smaller.
 - Refactor to separate GitLab client and Watchman processing into modules
+- Refactor to implement python-gitlab library for GitLab API calls, instead of the custom client used previously.
+  - This change allows for more efficient and easier to read code, is more reliable, and also allows for enhancements to be added more easily in the future.
 
 ### Added
 - Signatures now loaded into memory instead of being saved to disk. This allows for running on read-only filesystems.
 - Tests for Docker build
 
 ### Fixed
+- Error when searching wiki-blobs
+  - There would often be failures when trying to find projects or groups associated with blobs. This is now fixed by adding logic to check if the blob is associated with a project or group, and get the correct information accordingly.
+- URL encoding for wiki-blobs where the URL contains special characters
 - Error when enumerating pages when there is no `X-Total-Pages` header
 
 ## [3.0.0] - 2023-05-15

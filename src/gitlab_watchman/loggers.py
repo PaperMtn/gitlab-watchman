@@ -7,6 +7,7 @@ import logging.handlers
 import re
 import traceback
 import csv
+import urllib.parse
 from logging import Logger
 from typing import Any, Dict, List, ClassVar, Protocol
 from colorama import Fore, Back, Style, init
@@ -100,10 +101,24 @@ class StdoutLogger:
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
             elif scope == 'wiki_blobs':
+                if message.get('project_wiki'):
+                    wiki_path = f'{message.get("project").get("web_url")}/-/wikis/{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}'
+                elif message.get('group_wiki'):
+                    wiki_path = f'{message.get("group").get("web_url")}/-/wikis/{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}'
+                else:
+                    wiki_path = 'N/A'
+
+                if message.get('project_wiki'):
+                    wiki_type = 'Project Wiki'
+                elif message.get('group_wiki'):
+                    wiki_type = 'Group Wiki'
+                else:
+                    wiki_type = '???'
+
                 message = 'SCOPE: Wiki Blob' \
                           f'    FILENAME: {message.get("wiki_blob").get("filename")} \n' \
-                          f'    URL: {message.get("project").get("web_url")}/-/wikis/' \
-                          f'{message.get("wiki_blob").get("basename")} \n' \
+                          f'    WIKI_TYPE: {wiki_type} \n' \
+                          f'    URL: {wiki_path} \n' \
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
             elif scope == 'issues':
