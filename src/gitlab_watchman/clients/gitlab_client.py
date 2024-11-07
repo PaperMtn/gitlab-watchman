@@ -26,7 +26,8 @@ ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
 
 def exception_handler(func):
-    """ Decorator to handle exceptions raised by the GitLab API """
+    """ Decorator to handle exceptions raised by the GitLab API
+    """
     def inner_function(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -45,13 +46,20 @@ def exception_handler(func):
 
 
 class GitLabAPIClient:
+    """ Class to interact with the GitLab API
+
+    Attributes:
+        base_url: Base URL for the GitLab instance
+        logger: Logger object to log messages
+        session: Session object to make requests
+        gitlab_client: GitLab client object to interact with the API
+    """
 
     @exception_handler
     def __init__(self,
                  token: str,
                  base_url: str,
                  logger: StdoutLogger | JSONLogger):
-        self.token = token
         self.base_url = base_url.rstrip('\\')
         self.logger = logger
         self.session = session = requests.session()
@@ -61,10 +69,10 @@ class GitLabAPIClient:
                               total=5,
                               backoff_factor=0.3,
                               status_forcelist=[500, 502, 503, 504])))
-        session.headers.update({'Authorization': f'Bearer {self.token}'})
+        session.headers.update({'Authorization': f'Bearer {token}'})
         self.gitlab_client = Gitlab(
             url=self.base_url,
-            private_token=self.token,
+            private_token=token,
             session=self.session,
             per_page=100,
             retry_transient_errors=True)
@@ -76,13 +84,15 @@ class GitLabAPIClient:
             self.logger = logger
 
 
-
     @exception_handler
     def get_user_info(self) -> Dict[str, Any]:
         """ Get information on the authenticated user
 
         Returns:
             User object with user information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.user.asdict()
 
@@ -92,6 +102,9 @@ class GitLabAPIClient:
 
         Returns:
             User object with user information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.users.list(get_all=True, active=True, without_project_bots=True)
 
@@ -103,6 +116,9 @@ class GitLabAPIClient:
             username: Username of the user
         Returns:
             User object containing user data
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.users.list(username=username)[0].asdict()
 
@@ -112,6 +128,9 @@ class GitLabAPIClient:
 
         Returns:
             JSON object with settings
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.settings.get().asdict()
 
@@ -121,6 +140,9 @@ class GitLabAPIClient:
 
         Returns:
             JSON object with metadata
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.get_license()
 
@@ -139,6 +161,9 @@ class GitLabAPIClient:
 
         Returns:
             JSON object with variable information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
 
         return self.gitlab_client.variables.list(as_list=True)
@@ -149,6 +174,8 @@ class GitLabAPIClient:
 
         Returns:
             JSON object with token information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
         """
         return self.session.get(f'{self.base_url}/api/v4/personal_access_tokens/self').json()
 
@@ -160,6 +187,9 @@ class GitLabAPIClient:
             project_id: ID of the project to return
         Returns:
             JSON object with project information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.projects.get(project_id).asdict()
 
@@ -169,6 +199,9 @@ class GitLabAPIClient:
 
         Returns:
             List of all projects
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
         projects = self.gitlab_client.projects.list(all=True, as_list=True)
         return [project.asdict() for project in projects]
@@ -201,6 +234,9 @@ class GitLabAPIClient:
             ref: The name of branch, tag or commit
         Returns:
             JSON object with the file information
+        Raises:
+            GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
+            GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
         return self.gitlab_client.projects.get(project_id).files.get(
             file_path=path, ref=ref).asdict()
