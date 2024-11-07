@@ -9,7 +9,7 @@ import traceback
 from importlib import metadata
 from typing import List
 
-from gitlab_watchman import exceptions, watchman_processor
+from gitlab_watchman import watchman_processor
 from gitlab_watchman.signature_downloader import SignatureDownloader
 from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
 from gitlab_watchman.models import (
@@ -17,6 +17,13 @@ from gitlab_watchman.models import (
     user,
     project,
     group
+)
+from gitlab_watchman.exceptions import (
+    GitLabWatchmanError,
+    GitLabWatchmanGetObjectError,
+    GitLabWatchmanNotAuthorisedError,
+    GitLabWatchmanAuthenticationError,
+    ElasticsearchMissingError
 )
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 
@@ -56,7 +63,7 @@ def search(gitlab_connection: GitLabAPIClient,
                     severity=sig.severity,
                     detect_type=sig.name,
                     notify_type='result')
-    except exceptions.ElasticsearchMissingError as e:
+    except ElasticsearchMissingError as e:
         OUTPUT_LOGGER.log('WARNING', e)
         OUTPUT_LOGGER.log('DEBUG', traceback.format_exc())
     except Exception as e:
@@ -182,7 +189,7 @@ def main():
         OUTPUT_LOGGER = init_logger(logging_type, debug)
 
         if validate_variables():
-            connection = watchman_processor.initiate_gitlab_connection(
+            gitlab_client = watchman_processor.initiate_gitlab_connection(
                 os.environ.get('GITLAB_WATCHMAN_TOKEN'),
                 os.environ.get('GITLAB_WATCHMAN_URL'),
                 OUTPUT_LOGGER)
@@ -208,20 +215,20 @@ def main():
         OUTPUT_LOGGER.log('SUCCESS', f'{len(signature_list)} signatures loaded')
         OUTPUT_LOGGER.log('INFO', f'{multiprocessing.cpu_count() - 1} cores being used')
 
-        instance_metadata = connection.get_metadata()
+        instance_metadata = gitlab_client.get_metadata()
         OUTPUT_LOGGER.log('INSTANCE', instance_metadata, detect_type='Instance', notify_type='instance')
-        authenticated_user = connection.get_user_info()
+        authenticated_user = gitlab_client.get_user_info()
         OUTPUT_LOGGER.log('USER', authenticated_user, detect_type='User', notify_type='user')
         if authenticated_user.get('is_admin'):
             OUTPUT_LOGGER.log('SUCCESS', 'This user is an administrator on this GitLab instance!')
 
-        token_info = connection.get_authed_access_token_value()
+        token_info = gitlab_client.get_authed_access_token_value()
         OUTPUT_LOGGER.log('TOKEN', token_info, detect_type='Token', notify_type='token')
 
         if enum:
             OUTPUT_LOGGER.log('SUCCESS', 'Carrying out enumeration')
             OUTPUT_LOGGER.log('INFO', 'Enumerating users...')
-            gitlab_user_output = connection.get_all_users()
+            gitlab_user_output = gitlab_client.get_all_users()
             user_objects = []
             for u in gitlab_user_output:
                 user_objects.append(user.create_from_dict(u))
@@ -233,7 +240,7 @@ def main():
                 f'Users output to CSV file: {os.path.join(os.getcwd(), "gitlab_users.csv")}')
 
             OUTPUT_LOGGER.log('INFO', 'Enumerating groups...')
-            gitlab_groups_output = connection.get_all_groups()
+            gitlab_groups_output = gitlab_client.get_all_groups()
             group_objects = []
             for g in gitlab_groups_output:
                 group_objects.append(group.create_from_dict(g))
@@ -245,7 +252,7 @@ def main():
                 f'Groups output to CSV file: {os.path.join(os.getcwd(), "gitlab_groups.csv")}')
 
             OUTPUT_LOGGER.log('INFO', 'Enumerating projects...')
-            gitlab_projects_output = connection.get_all_projects()
+            gitlab_projects_output = gitlab_client.get_all_projects()
             project_objects = []
             for p in gitlab_projects_output:
                 project_objects.append(project.create_from_dict(p))
@@ -258,7 +265,7 @@ def main():
 
         if everything:
             OUTPUT_LOGGER.log('INFO', 'Getting everything...')
-            perform_search(connection, signature_list, timeframe, verbose,
+            perform_search(gitlab_client, signature_list, timeframe, verbose,
                            [
                                'blobs',
                                'commits',
@@ -272,33 +279,36 @@ def main():
         else:
             if blobs:
                 OUTPUT_LOGGER.log('INFO', 'Searching blobs')
-                perform_search(connection, signature_list, timeframe, verbose, ['blobs'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['blobs'])
             if commits:
                 OUTPUT_LOGGER.log('INFO', 'Searching commits')
-                perform_search(connection, signature_list, timeframe, verbose, ['commits'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['commits'])
             if issues:
                 OUTPUT_LOGGER.log('INFO', 'Searching issues')
-                perform_search(connection, signature_list, timeframe, verbose, ['issues'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['issues'])
             if merge:
                 OUTPUT_LOGGER.log('INFO', 'Searching merge requests')
-                perform_search(connection, signature_list, timeframe, verbose, ['merge_requests'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['merge_requests'])
             if wiki:
                 OUTPUT_LOGGER.log('INFO', 'Searching wiki blobs')
-                perform_search(connection, signature_list, timeframe, verbose, ['wiki_blobs'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['wiki_blobs'])
             if milestones:
                 OUTPUT_LOGGER.log('INFO', 'Searching milestones')
-                perform_search(connection, signature_list, timeframe, verbose, ['milestones'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['milestones'])
             if notes:
                 OUTPUT_LOGGER.log('INFO', 'Searching notes')
-                perform_search(connection, signature_list, timeframe, verbose, ['notes'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['notes'])
             if snippets:
                 OUTPUT_LOGGER.log('INFO', 'Searching snippets')
-                perform_search(connection, signature_list, timeframe, verbose, ['snippet_titles'])
+                perform_search(gitlab_client, signature_list, timeframe, verbose, ['snippet_titles'])
 
         OUTPUT_LOGGER.log('SUCCESS', f'GitLab Watchman finished execution - Execution time:'
                                      f' {str(datetime.timedelta(seconds=time.time() - start_time))}')
 
-    except exceptions.ElasticsearchMissingError as e:
+    except (ElasticsearchMissingError,
+            GitLabWatchmanNotAuthorisedError,
+            GitLabWatchmanGetObjectError,
+            GitLabWatchmanAuthenticationError) as e:
         OUTPUT_LOGGER.log('WARNING', e)
         OUTPUT_LOGGER.log('DEBUG', traceback.format_exc())
     except Exception as e:

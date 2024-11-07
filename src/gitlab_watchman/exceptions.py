@@ -3,7 +3,6 @@ from typing import Dict, Any
 class GitLabWatchmanError(Exception):
     """ Base class for exceptions in GitLab Watchman.
     """
-    pass
 
 class ElasticsearchMissingError(GitLabWatchmanError):
     """ Exception raised when Elasticsearch is not enabled on the instance.
