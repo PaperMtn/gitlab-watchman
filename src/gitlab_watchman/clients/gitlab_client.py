@@ -10,12 +10,11 @@ from gitlab.exceptions import (
     GitlabLicenseError,
     GitlabAuthenticationError,
     GitlabGetError,
-    GitlabListError
+    GitlabListError,
+    GitlabSearchError,
+    GitlabHttpError
 )
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
 
-from gitlab_watchman.loggers import StdoutLogger, JSONLogger
 from gitlab_watchman.exceptions import (
     GitLabWatchmanAuthenticationError,
     GitLabWatchmanGetObjectError,
@@ -33,9 +32,15 @@ def exception_handler(func):
             return func(*args, **kwargs)
         except GitlabAuthenticationError as e:
             raise GitLabWatchmanAuthenticationError(e.error_message) from e
-        except (GitlabGetError, GitlabListError, GitlabLicenseError) as e:
+        except (GitlabGetError,
+                GitlabListError,
+                GitlabLicenseError,
+                GitlabSearchError,
+                GitlabHttpError) as e:
             if e.response_code == 403:
                 raise GitLabWatchmanNotAuthorisedError(e.error_message, func) from e
+            elif e.response_code == 500:
+                pass
             else:
                 raise GitLabWatchmanGetObjectError(e.error_message, func) from e
         except IndexError as e:
@@ -50,7 +55,6 @@ class GitLabAPIClient:
 
     Attributes:
         base_url: Base URL for the GitLab instance
-        logger: Logger object to log messages
         session: Session object to make requests
         gitlab_client: GitLab client object to interact with the API
     """
@@ -58,30 +62,18 @@ class GitLabAPIClient:
     @exception_handler
     def __init__(self,
                  token: str,
-                 base_url: str,
-                 logger: StdoutLogger | JSONLogger):
+                 base_url: str):
         self.base_url = base_url.rstrip('\\')
-        self.logger = logger
         self.session = session = requests.session()
-        session.mount(self.base_url,
-                      HTTPAdapter(
-                          max_retries=Retry(
-                              total=5,
-                              backoff_factor=0.3,
-                              status_forcelist=[500, 502, 503, 504])))
         session.headers.update({'Authorization': f'Bearer {token}'})
         self.gitlab_client = Gitlab(
             url=self.base_url,
             private_token=token,
             session=self.session,
             per_page=100,
-            retry_transient_errors=True)
+            retry_transient_errors=True,
+            api_version='4')
         self.gitlab_client.auth()
-
-        if isinstance(logger, JSONLogger):
-            self.logger = None
-        else:
-            self.logger = logger
 
 
     @exception_handler

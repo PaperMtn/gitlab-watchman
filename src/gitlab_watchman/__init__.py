@@ -23,7 +23,8 @@ from gitlab_watchman.exceptions import (
     GitLabWatchmanGetObjectError,
     GitLabWatchmanNotAuthorisedError,
     GitLabWatchmanAuthenticationError,
-    ElasticsearchMissingError
+    ElasticsearchMissingError,
+    MissingEnvVarError
 )
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 
@@ -118,7 +119,7 @@ def validate_variables() -> bool:
 
     for var in required_vars:
         if var not in os.environ:
-            raise exceptions.MissingEnvVarError(var)
+            raise MissingEnvVarError(var)
 
     return True
 
@@ -188,13 +189,10 @@ def main():
 
         OUTPUT_LOGGER = init_logger(logging_type, debug)
 
-        if validate_variables():
-            gitlab_client = watchman_processor.initiate_gitlab_connection(
-                os.environ.get('GITLAB_WATCHMAN_TOKEN'),
-                os.environ.get('GITLAB_WATCHMAN_URL'),
-                OUTPUT_LOGGER)
-        else:
-            raise Exception('Either GITLAB_WATCHMAN_TOKEN or GITLAB_WATCHMAN_URL environment variables not set')
+        validate_variables()
+        gitlab_client = watchman_processor.initiate_gitlab_connection(
+            os.environ.get('GITLAB_WATCHMAN_TOKEN'),
+            os.environ.get('GITLAB_WATCHMAN_URL'))
 
         now = int(time.time())
         today = datetime.date.today().strftime('%Y-%m-%d')
@@ -202,7 +200,7 @@ def main():
 
         OUTPUT_LOGGER.log('SUCCESS', 'GitLab Watchman started execution')
         OUTPUT_LOGGER.log('INFO', f'Version: {project_metadata.get("version")}')
-        OUTPUT_LOGGER.log('INFO', f'Created by: PaperMtn <papermtn@protonmail.com>')
+        OUTPUT_LOGGER.log('INFO', 'Created by: PaperMtn <papermtn@protonmail.com>')
         OUTPUT_LOGGER.log('INFO', f'Searching GitLab instance {os.environ.get("GITLAB_WATCHMAN_URL")}')
         OUTPUT_LOGGER.log('INFO', f'Searching from {start_date} to {today}')
         if verbose:
