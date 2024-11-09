@@ -22,6 +22,7 @@ colorama = "^0.4.6"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 python-gitlab = "^5.0.0"
+pytz = "^2024.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
