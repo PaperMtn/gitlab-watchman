@@ -3,6 +3,7 @@ import multiprocessing
 import re
 import time
 import traceback
+import hashlib
 from dataclasses import dataclass
 from typing import List, Dict
 
@@ -26,7 +27,7 @@ from gitlab_watchman.models import (
     project,
     group
 )
-from gitlab_watchman.utils import convert_time, deduplicate_results, split_to_chunks
+from gitlab_watchman.utils import convert_to_epoch, deduplicate_results, split_to_chunks
 
 ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
@@ -224,26 +225,28 @@ def _blob_worker(args: WorkerArgs) -> List[Dict]:
     """
 
     now = calendar.timegm(time.gmtime())
-    for b in args.search_result_list:
+    for blob_dict in args.search_result_list:
         try:
-            blob_object = blob.create_from_dict(b)
+            blob_object = blob.create_from_dict(blob_dict)
             project_object = project.create_from_dict(args.gitlab_client.get_project(blob_object.project_id))
             file_object = file.create_from_dict(
                 args.gitlab_client.get_file(blob_object.project_id, blob_object.path, blob_object.ref))
             if file_object:
                 commit_object = commit.create_from_dict(
                     args.gitlab_client.get_commit(blob_object.project_id, file_object.commit_id))
-                if convert_time(commit_object.committed_date) > (now - args.timeframe) and args.regex.search(
+                if convert_to_epoch(commit_object.committed_date) > (now - args.timeframe) and args.regex.search(
                         str(blob_object.data)):
                     match_string = args.regex.search(str(blob_object.data)).group(0)
                     if not args.verbose:
                         setattr(blob_object, 'data', None)
+                    watchman_id = hashlib.md5(f'{match_string}.{file_object.file_path}'.encode()).hexdigest()
                     args.results_list.append({
                         'match_string': match_string,
                         'blob': blob_object,
                         'commit': commit_object,
                         'project': _populate_project_owners(args.gitlab_client, project_object),
-                        'file': file_object
+                        'file': file_object,
+                        'watchman_id': watchman_id
                     })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
@@ -255,23 +258,23 @@ def _wiki_blob_worker(args: WorkerArgs) -> List[Dict]:
     """ MULTIPROCESSING WORKER - Iterates through a list of wiki_blobs to find matches against the regex.
 
     Args:
-        args (WorkerArgs): Multiprocessing arguments containing the
+        args: Multiprocessing arguments containing the
                                     GitLab client, search list, regex pattern,
                                     timeframe, results list, verbosity flag, and log handler.
     Returns:
         List[Dict]: Multiprocessing list to be combined by the parent process.
     """
 
-    for wb in args.search_result_list:
+    for wb_dict in args.search_result_list:
         try:
-            wikiblob_object = wiki_blob.create_from_dict(wb)
+            wikiblob_object = wiki_blob.create_from_dict(wb_dict)
             project_wiki = False
             group_wiki = False
-            if wb.get('project_id'):
-                project_object = project.create_from_dict(args.gitlab_client.get_project(wb.get('project_id')))
+            if wb_dict.get('project_id'):
+                project_object = project.create_from_dict(args.gitlab_client.get_project(wb_dict.get('project_id')))
                 project_wiki = True
-            if wb.get('group_id'):
-                group_object = group.create_from_dict(args.gitlab_client.get_group(wb.get('group_id')))
+            if wb_dict.get('group_id'):
+                group_object = group.create_from_dict(args.gitlab_client.get_group(wb_dict.get('group_id')))
                 group_wiki = True
 
             if args.regex.search(
@@ -279,11 +282,13 @@ def _wiki_blob_worker(args: WorkerArgs) -> List[Dict]:
                 match_string = args.regex.search(str(wikiblob_object.data)).group(0)
                 if not args.verbose:
                     setattr(wikiblob_object, 'data', None)
+                watchman_id = hashlib.md5(f'{match_string}.{wikiblob_object.path}'.encode()).hexdigest()
                 results_dict = {
                     'match_string': match_string,
                     'wiki_blob': wikiblob_object,
                     'group_wiki': group_wiki,
                     'project_wiki': project_wiki,
+                    'watchman_id': watchman_id
                 }
                 if project_wiki:
                     results_dict['project'] = _populate_project_owners(args.gitlab_client, project_object)
@@ -309,16 +314,19 @@ def _commit_worker(args: WorkerArgs) -> List[Dict]:
 
     now = calendar.timegm(time.gmtime())
 
-    for c in args.search_result_list:
+    for commit_dict in args.search_result_list:
         try:
-            commit_object = commit.create_from_dict(c)
-            if convert_time(commit_object.committed_date) > (now - args.timeframe) and \
+            commit_object = commit.create_from_dict(commit_dict)
+            if convert_to_epoch(commit_object.committed_date) > (now - args.timeframe) and \
                     args.regex.search(str(commit_object.message)):
                 project_object = project.create_from_dict(args.gitlab_client.get_project(commit_object.project_id))
+                match_string = args.regex.search(str(commit_object.message)).group(0)
+                watchman_id = hashlib.md5(f'{match_string}.{commit_object.id}'.encode()).hexdigest()
                 args.results_list.append({
-                    'match_string': args.regex.search(str(commit_object.message)).group(0),
+                    'match_string': match_string,
                     'commit': commit_object,
-                    'project': _populate_project_owners(args.gitlab_client, project_object)
+                    'project': _populate_project_owners(args.gitlab_client, project_object),
+                    'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
@@ -338,19 +346,21 @@ def _issue_worker(args: WorkerArgs) -> List[Dict]:
     """
 
     now = calendar.timegm(time.gmtime())
-    for i in args.search_result_list:
+    for issue_dict in args.search_result_list:
         try:
-            issue_object = issue.create_from_dict(i)
-            if convert_time(issue_object.updated_at) > (now - args.timeframe) and \
+            issue_object = issue.create_from_dict(issue_dict)
+            if convert_to_epoch(issue_object.updated_at) > (now - args.timeframe) and \
                     args.regex.search(str(issue_object.description)):
                 match_string = args.regex.search(str(issue_object.description)).group(0)
                 if not args.verbose:
                     setattr(issue_object, 'description', None)
                 project_object = project.create_from_dict(args.gitlab_client.get_project(issue_object.project_id))
+                watchman_id = hashlib.md5(f'{match_string}.{issue_object.id}'.encode()).hexdigest()
                 args.results_list.append({
                     'match_string': match_string,
                     'issue': issue_object,
-                    'project': _populate_project_owners(args.gitlab_client, project_object)
+                    'project': _populate_project_owners(args.gitlab_client, project_object),
+                    'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
@@ -368,19 +378,21 @@ def _milestone_worker(args: WorkerArgs) -> List[Dict]:
     """
 
     now = calendar.timegm(time.gmtime())
-    for m in args.search_result_list:
+    for milestone_dict in args.search_result_list:
         try:
-            milestone_object = milestone.create_from_dict(m)
-            if convert_time(milestone_object.updated_at) > (now - args.timeframe) and \
+            milestone_object = milestone.create_from_dict(milestone_dict)
+            if convert_to_epoch(milestone_object.updated_at) > (now - args.timeframe) and \
                     args.regex.search(str(milestone_object.description)):
                 project_object = project.create_from_dict(args.gitlab_client.get_project(milestone_object.project_id))
                 match_string = args.regex.search(str(milestone_object.description)).group(0)
                 if not args.verbose:
                     setattr(milestone_object, 'description', None)
+                watchman_id = hashlib.md5(f'{match_string}.{milestone_object.id}'.encode()).hexdigest()
                 args.results_list.append({
                     'match_string': match_string,
                     'milestone': milestone_object,
-                    'project': _populate_project_owners(args.gitlab_client, project_object)
+                    'project': _populate_project_owners(args.gitlab_client, project_object),
+                    'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
@@ -400,19 +412,21 @@ def _merge_request_worker(args: WorkerArgs) -> List[Dict]:
     """
 
     now = calendar.timegm(time.gmtime())
-    for mr in args.search_result_list:
+    for mr_dict in args.search_result_list:
         try:
-            mr_object = merge_request.create_from_dict(mr)
-            if convert_time(mr_object.updated_at) > (now - args.timeframe) and \
+            mr_object = merge_request.create_from_dict(mr_dict)
+            if convert_to_epoch(mr_object.updated_at) > (now - args.timeframe) and \
                     args.regex.search(str(mr_object.description)):
                 project_object = project.create_from_dict(args.gitlab_client.get_project(mr_object.project_id))
                 match_string = args.regex.search(str(mr_object.description)).group(0)
                 if not args.verbose:
                     setattr(mr_object, 'description', None)
+                watchman_id = hashlib.md5(f'{match_string}.{mr_object.id}'.encode()).hexdigest()
                 args.results_list.append({
                     'match_string': match_string,
                     'merge_request': mr_object,
-                    'project': _populate_project_owners(args.gitlab_client, project_object)
+                    'project': _populate_project_owners(args.gitlab_client, project_object),
+                    'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
@@ -433,14 +447,16 @@ def _note_worker(args: WorkerArgs) -> List[Dict]:
 
     now = calendar.timegm(time.gmtime())
     try:
-        for n in args.search_result_list:
-            note_object = note.create_from_dict(n)
-            if convert_time(note_object.created_at) > (now - args.timeframe) and \
+        for note_dict in args.search_result_list:
+            note_object = note.create_from_dict(note_dict)
+            if convert_to_epoch(note_object.created_at) > (now - args.timeframe) and \
                     args.regex.search(str(note_object.body)):
                 match_string = args.regex.search(str(note_object.body)).group(0)
+                watchman_id = hashlib.md5(f'{match_string}.{note_object.id}'.encode()).hexdigest()
                 args.results_list.append({
                     'note': note_object,
-                    'match_string': match_string
+                    'match_string': match_string,
+                    'watchman_id': watchman_id
                 })
     except GitLabWatchmanGetObjectError as e:
         args.log_handler.log('WARNING', e)
@@ -463,18 +479,19 @@ def _snippet_worker(args: WorkerArgs) -> List[Dict]:
     for snippet_dict in args.search_result_list:
         try:
             snippet_object = snippet.create_from_dict(snippet_dict)
-            if convert_time(snippet_object.created_at) > (now - args.timeframe) and \
+            if convert_to_epoch(snippet_object.created_at) > (now - args.timeframe) and \
                     (args.regex.search(str(snippet_object.title)) or args.regex.search(str(snippet_object.description))):
                 if args.regex.search(str(snippet_object.title)):
                     match_string = args.regex.search(str(snippet_object.title)).group(0)
                 else:
                     match_string = args.regex.search(str(snippet_object.description)).group(0)
-
                 if not args.verbose:
                     setattr(snippet_object, 'description', None)
+                watchman_id = hashlib.md5(f'{match_string}.{snippet_object.id}'.encode()).hexdigest()
                 args.results_list.append({
                     'snippet': snippet_object,
-                    'match_string': match_string
+                    'match_string': match_string,
+                    'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
             args.log_handler.log('WARNING', e)
