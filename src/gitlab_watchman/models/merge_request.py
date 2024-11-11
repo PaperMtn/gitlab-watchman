@@ -6,7 +6,8 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class MergeRequest(object):
+# pylint: disable=too-many-instance-attributes
+class MergeRequest:
     """ Class that defines MergeRequest objects for GitLab merge requests"""
 
     id: str

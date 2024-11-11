@@ -15,6 +15,7 @@ SIGNATURE_URL = 'https://github.com/PaperMtn/watchman-signatures/archive/main.zi
 
 
 class SignatureDownloader:
+    """ A class for downloading and processing signature files from a GitHub repository. """
     def __init__(self, logger: JSONLogger | StdoutLogger):
         """ Initializes a SignatureDownloader object.
 

@@ -6,7 +6,8 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Issue(object):
+# pylint: disable=too-many-instance-attributes
+class Issue:
     """ Class that defines Issues objects for GitLab issues"""
 
     id: str

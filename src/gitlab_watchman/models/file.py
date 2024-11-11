@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class File(object):
+class File:
     """ Class that defines File objects for GitLab files"""
 
     file_name: str

@@ -16,20 +16,28 @@ from gitlab_watchman.utils import EnhancedJSONEncoder
 
 
 class StdoutLogger:
+    """ Class to log to stdout """
     def __init__(self, **kwargs):
         self.debug = kwargs.get('debug')
         self.print_header()
         init()
 
+    # pylint: disable=too-many-branches
     def log(self,
-            mes_type: str,
+            msg_level: str,
             message: Any,
             **kwargs) -> None:
+        """ Log to stdout
+
+        Args:
+            msg_level: Level message to log
+            message: Message data to log
+        """
 
         notify_type = kwargs.get('notify_type')
         scope = kwargs.get('scope')
 
-        if not self.debug and mes_type == 'DEBUG':
+        if not self.debug and msg_level == 'DEBUG':
             return
 
         if dataclasses.is_dataclass(message):
@@ -44,7 +52,7 @@ class StdoutLogger:
                       f'        URL: {message.get("kas").get("externalUrl")}  \n'\
                       f'        VERSION: {message.get("kas").get("version")}  \n' \
                       f'    ENTERPRISE: {message.get("enterprise")}'
-            mes_type = 'INSTANCE'
+            msg_level = 'INSTANCE'
         if notify_type == "user":
             message = f'USER: \n' \
                       f'    ID: {message.get("id")}  \n' \
@@ -57,7 +65,7 @@ class StdoutLogger:
                       f'    CAN_CREATE_GROUP: {message.get("can_create_group")} \n'\
                       f'    CAN_CREATE_PROJECT: {message.get("can_create_project")} \n' \
                       f'    2FA_ENABLED: {message.get("two_factor_enabled")}'
-            mes_type = 'USER'
+            msg_level = 'USER'
         if notify_type == "token":
             message = f'PERSONAL_ACCESS_TOKEN: \n' \
                       f'    ID: {message.get("id")}  \n' \
@@ -68,7 +76,7 @@ class StdoutLogger:
                       f'    LAST_USED_AT: {message.get("last_used_at")} \n' \
                       f'    ACTIVE: {message.get("active")} \n'\
                       f'    EXPIRY: {message.get("expires_at", "Never")}'
-            mes_type = 'WARNING'
+            msg_level = 'WARNING'
         if notify_type == "result":
             if scope == 'blobs':
                 message = 'SCOPE: Blob' \
@@ -145,12 +153,12 @@ class StdoutLogger:
                           f'    URL: {message.get("snippet").get("web_url")} \n' \
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
-            mes_type = 'RESULT'
+            msg_level = 'RESULT'
         try:
-            self.log_to_stdout(message, mes_type)
+            self.log_to_stdout(message, msg_level)
         except Exception as e:
             print(e)
-            self.log_to_stdout(message, mes_type)
+            self.log_to_stdout(message, msg_level)
 
     def log_to_stdout(self,
                       message: Any,
@@ -236,7 +244,10 @@ class StdoutLogger:
                 sys.exit(1)
             print('Formatting error')
 
-    def print_header(self) -> None:
+    @staticmethod
+    def print_header() -> None:
+        """ Prints the header for the logger"""
+
         print(" ".ljust(79) + Style.BRIGHT)
 
         print(Fore.LIGHTRED_EX + Style.BRIGHT +
@@ -265,6 +276,7 @@ class StdoutLogger:
 
 
 class JSONLogger(Logger):
+    """ Custom logger class for JSON logging"""
     def __init__(self, name: str = 'gitlab_watchman', **kwargs):
         super().__init__(name)
         self.notify_format = logging.Formatter(
@@ -290,13 +302,13 @@ class JSONLogger(Logger):
 
     def log(self,
             level: str,
-            log_data: str or Dict,
+            msg: str or Dict,
             **kwargs):
         if level.upper() == 'NOTIFY':
             self.handler.setFormatter(self.notify_format)
             self.logger.info(
                 json.dumps(
-                    log_data,
+                    msg,
                     cls=EnhancedJSONEncoder),
                 extra={
                     'scope': kwargs.get('scope', ''),
@@ -304,27 +316,28 @@ class JSONLogger(Logger):
                     'severity': kwargs.get('severity', '')})
         elif level.upper() == 'INFO':
             self.handler.setFormatter(self.info_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'DEBUG':
             self.handler.setFormatter(self.info_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'SUCCESS':
             self.handler.setFormatter(self.success_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'INSTANCE':
             self.handler.setFormatter(self.instance_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'USER':
             self.handler.setFormatter(self.user_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'TOKEN':
             self.handler.setFormatter(self.token_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         else:
             self.handler.setFormatter(self.info_format)
-            self.logger.critical(log_data)
+            self.logger.critical(msg)
 
 
+# pylint: disable=missing-class-docstring
 class IsDataclass(Protocol):
     __dataclass_fields__: ClassVar[Dict]
 

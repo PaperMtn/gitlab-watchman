@@ -7,13 +7,14 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class File(object):
+class File:
+    """ Class that defines File objects for GitLab snippets"""
     path: str
     raw_url: str
 
 
 @dataclass(slots=True)
-class Snippet(object):
+class Snippet:
     """ Class that defines User objects for GitLab snippets"""
 
     id: str

@@ -14,7 +14,6 @@ from gitlab.exceptions import (
     GitlabSearchError,
     GitlabHttpError
 )
-
 from gitlab_watchman.exceptions import (
     GitLabWatchmanAuthenticationError,
     GitLabWatchmanGetObjectError,

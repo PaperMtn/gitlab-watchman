@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class User(object):
+class User:
     """ Class that defines User objects for GitLab users"""
 
     id: str

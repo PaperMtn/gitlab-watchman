@@ -5,7 +5,8 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Milestone(object):
+# pylint: disable=too-many-instance-attributes
+class Milestone:
     """ Class that defines Milestone objects for GitLab milestones"""
 
     id: str
