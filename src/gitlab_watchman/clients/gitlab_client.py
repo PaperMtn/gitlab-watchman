@@ -27,6 +27,7 @@ ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 def exception_handler(func):
     """ Decorator to handle exceptions raised by the GitLab API
     """
+
     def inner_function(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -47,6 +48,7 @@ def exception_handler(func):
             raise GitLabWatchmanGetObjectError('Object not found', func) from e
         except Exception as e:
             raise e
+
     return inner_function
 
 
@@ -74,7 +76,6 @@ class GitLabAPIClient:
             retry_transient_errors=True,
             api_version='4')
         self.gitlab_client.auth()
-
 
     @exception_handler
     def get_user_info(self) -> Dict[str, Any]:
@@ -210,7 +211,7 @@ class GitLabAPIClient:
             GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
             GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        members = self.gitlab_client.projects.get(project_id).members.list(as_list=True)
+        members = self.gitlab_client.projects.get(project_id).members.list(as_list=True, get_all=True)
         return [member.asdict() for member in members]
 
     @exception_handler
