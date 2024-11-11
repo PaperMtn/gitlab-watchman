@@ -1,10 +1,5 @@
 from gitlab_watchman.models import wiki_blob
-from gitlab_watchman.utils import convert_to_utc_datetime
-
-from fixtures import (
-    GitLabMockData,
-    mock_wiki_blob
-)
+from fixtures import GitLabMockData, mock_wiki_blob
 
 
 def test_wiki_blob_initialisation(mock_wiki_blob):
