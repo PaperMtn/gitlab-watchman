@@ -9,6 +9,10 @@
 ### Added
 - Signatures now loaded into memory instead of being saved to disk. This allows for running on read-only filesystems.
 - Tests for Docker build
+- Enhanced deduplication of findings
+  - The same match should not be returned multiple times within the same scope. E.g. if a token is found in a commit, it should not be returned multiple times in the same commit.
+- All dates are now converted and logged in UTC
+- Unit tests added for models and utils
 
 ### Fixed
 - Error when searching wiki-blobs

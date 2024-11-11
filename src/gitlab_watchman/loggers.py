@@ -12,6 +12,8 @@ from logging import Logger
 from typing import Any, Dict, List, ClassVar, Protocol
 from colorama import Fore, Back, Style, init
 
+from gitlab_watchman.utils import EnhancedJSONEncoder
+
 
 class StdoutLogger:
     def __init__(self, **kwargs):
@@ -102,9 +104,11 @@ class StdoutLogger:
                           f'    -----'
             elif scope == 'wiki_blobs':
                 if message.get('project_wiki'):
-                    wiki_path = f'{message.get("project").get("web_url")}/-/wikis/{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}'
+                    wiki_path = (f'{message.get("project").get("web_url")}/-/wikis/'
+                                 f'{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}')
                 elif message.get('group_wiki'):
-                    wiki_path = f'{message.get("group").get("web_url")}/-/wikis/{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}'
+                    wiki_path = (f'{message.get("group").get("web_url")}/-/wikis/'
+                                 f'{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}')
                 else:
                     wiki_path = 'N/A'
 
@@ -260,13 +264,6 @@ class StdoutLogger:
         print(' '.ljust(79) + Fore.GREEN)
 
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
 class JSONLogger(Logger):
     def __init__(self, name: str = 'gitlab_watchman', **kwargs):
         super().__init__(name)
@@ -349,3 +346,18 @@ def log_to_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
         f.close()
     except Exception as e:
         print(e)
+
+
+def init_logger(logging_type: str, debug: bool) -> JSONLogger | StdoutLogger:
+    """ Create a logger object. Defaults to stdout if no option is given
+
+    Args:
+        logging_type: Type of logging to use
+        debug: Whether to use debug level logging or not
+    Returns:
+        Logger object
+    """
+
+    if not logging_type or logging_type == 'stdout':
+        return StdoutLogger(debug=debug)
+    return JSONLogger(debug=debug)
