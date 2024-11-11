@@ -11,7 +11,7 @@ from typing import List, Dict, Optional
 from requests.exceptions import SSLError
 
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
-from gitlab_watchman.exceptions import GitLabWatchmanGetObjectError, GitLabWatchmanAuthenticationError
+from gitlab_watchman.exceptions import GitLabWatchmanAuthenticationError
 from gitlab_watchman.loggers import JSONLogger, StdoutLogger, init_logger
 from gitlab_watchman.models import (
     signature,
@@ -254,7 +254,7 @@ def _blob_worker(args: WorkerArgs) -> List[Dict]:
                         'file': file_object,
                         'watchman_id': watchman_id
                     })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -305,7 +305,7 @@ def _wiki_blob_worker(args: WorkerArgs) -> List[Dict]:
                 if group_wiki:
                     results_dict['group'] = group_object
                 args.results_list.append(results_dict)
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -342,7 +342,7 @@ def _commit_worker(args: WorkerArgs) -> List[Dict]:
                     'project': _populate_project_owners(args.gitlab_client, project_object),
                     'watchman_id': watchman_id
                 })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -380,7 +380,7 @@ def _issue_worker(args: WorkerArgs) -> List[Dict]:
                     'project': _populate_project_owners(args.gitlab_client, project_object),
                     'watchman_id': watchman_id
                 })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -416,7 +416,7 @@ def _milestone_worker(args: WorkerArgs) -> List[Dict]:
                     'project': _populate_project_owners(args.gitlab_client, project_object),
                     'watchman_id': watchman_id
                 })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -454,7 +454,7 @@ def _merge_request_worker(args: WorkerArgs) -> List[Dict]:
                     'project': _populate_project_owners(args.gitlab_client, project_object),
                     'watchman_id': watchman_id
                 })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
@@ -488,7 +488,7 @@ def _note_worker(args: WorkerArgs) -> List[Dict]:
                     'match_string': match_string,
                     'watchman_id': watchman_id
                 })
-    except GitLabWatchmanGetObjectError as e:
+    except Exception as e:
         if args.log_handler:
             args.log_handler.log('WARNING', e)
             args.log_handler.log('DEBUG', traceback.format_exc())
@@ -527,7 +527,7 @@ def _snippet_worker(args: WorkerArgs) -> List[Dict]:
                     'match_string': match_string,
                     'watchman_id': watchman_id
                 })
-        except GitLabWatchmanGetObjectError as e:
+        except Exception as e:
             if args.log_handler:
                 args.log_handler.log('WARNING', e)
                 args.log_handler.log('DEBUG', traceback.format_exc())
