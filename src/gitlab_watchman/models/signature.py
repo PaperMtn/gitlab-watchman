@@ -1,16 +1,17 @@
 import datetime
-from typing import Any, Dict
+from typing import Any, Dict, List
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass(slots=True)
-class TestCases(object):
+class TestCases:
+    """ Class that holds test cases for a signature """
     match_cases: list
     fail_cases: list
 
 
 @dataclass(frozen=True, slots=True)
+# pylint: disable=too-many-instance-attributes
 class Signature:
     """ Class that handles loaded signature objects. Signatures
     define what to search for in Slack and where to search for it.
@@ -36,15 +37,13 @@ class Signature:
             raise TypeError(f'Expected `status` to be of type str, received {type(self.status).__name__}')
         if self.author and not isinstance(self.author, str):
             raise TypeError(f'Expected `author` to be of type str, received {type(self.author).__name__}')
-        if self.date and not (isinstance(self.date, datetime.date)
-                              or isinstance(self.date, str)
-                              or isinstance(self.date, datetime.datetime)):
+        if self.date and not isinstance(self.date, (datetime.date, datetime.datetime, str)):
             raise TypeError(f'Expected `date` to be of type str, received {type(self.date).__name__}')
         if self.version and not isinstance(self.version, str):
             raise TypeError(f'Expected `version` to be of type str, received {type(self.version).__name__}')
         if self.description and not isinstance(self.description, str):
             raise TypeError(f'Expected `description` to be of type str, received {type(self.description).__name__}')
-        if self.severity and not (isinstance(self.severity, int) or isinstance(self.severity, str)):
+        if self.severity and not isinstance(self.severity, (int, str)):
             raise TypeError(f'Expected `severity` to be of type int or str, received {type(self.severity).__name__}')
         if self.scope and not isinstance(self.scope, list):
             raise TypeError(f'Expected `scope` to be of type list, received {type(self.scope).__name__}')

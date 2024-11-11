@@ -116,6 +116,8 @@ def validate_variables() -> bool:
     return True
 
 
+# pylint: disable=too-many-locals, missing-function-docstring, global-variable-undefined
+# pylint: disable=too-many-branches, disable=too-many-statements
 def main():
     global OUTPUT_LOGGER
     try:

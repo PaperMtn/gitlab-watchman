@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class Blob(object):
+class Blob:
     """ Class that defines Blob objects for GitLab blobs"""
 
     basename: str

@@ -7,6 +7,7 @@ import pytz
 
 
 class EnhancedJSONEncoder(json.JSONEncoder):
+    """ JSON Encoder that handles datetime and dataclass objects"""
     def default(self, o):
         if isinstance(o, datetime):
             return o.isoformat()

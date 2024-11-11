@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class WikiBlob(object):
+class WikiBlob:
     """ Class that defines WikiBlob objects for GitLab blobs"""
 
     basename: str

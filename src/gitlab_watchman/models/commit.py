@@ -5,7 +5,8 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Commit(object):
+# pylint: disable=too-many-instance-attributes
+class Commit:
     """ Class that defines File objects for GitLab files"""
 
     id: str

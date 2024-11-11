@@ -7,7 +7,8 @@ from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Namespace(object):
+class Namespace:
+    """ Class that defines Namespace objects for GitLab Projects"""
     id: str
     name: str
     path: str
@@ -20,7 +21,7 @@ class Namespace(object):
 
 
 @dataclass(slots=True)
-class Project(object):
+class Project:
     """ Class that defines User objects for GitLab projects"""
 
     id: str

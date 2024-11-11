@@ -78,12 +78,12 @@ def find_group_owners(group_members: List[Dict]) -> List[Dict]:
     """
 
     member_list = []
-    for user in group_members:
-        if user.get('state') == 'active' and user.get('access_level') == 50:
+    for user_dict in group_members:
+        if user_dict.get('state') == 'active' and user_dict.get('access_level') == 50:
             member_list.append({
-                'user_id': user.get('id'),
-                'name': user.get('name'),
-                'username': user.get('username'),
+                'user_id': user_dict.get('id'),
+                'name': user_dict.get('name'),
+                'username': user_dict.get('username'),
                 'access_level': 'Owner'
             })
 
@@ -91,6 +91,13 @@ def find_group_owners(group_members: List[Dict]) -> List[Dict]:
 
 
 def log_listener(log_queue: Queue, logging_type: str, debug: bool):
+    """ Listener for use in multiprocessing queued logging
+
+    Args:
+        log_queue: Queue object
+        logging_type: Type of logging to use
+        debug: Whether to use debug level logging or not
+    """
     log_handler = init_logger(logging_type, debug)
     while True:
         record = log_queue.get()
@@ -108,6 +115,22 @@ def search(gitlab: GitLabAPIClient,
            scope: str,
            verbose: bool,
            timeframe: int = ALL_TIME) -> List[Dict] | None:
+    """ Use the appropriate search function to search GitLab based on the contents
+    of the signature file
+
+    Args:
+        gitlab: GitLab API object
+        logging_type: Type of logging to use
+        log_handler: Logger object
+        debug: Whether to use debug level logging or not
+        sig: Signature object
+        scope: What sort of GitLab objects to search
+        verbose: Whether to use verbose logging
+        timeframe: Timeframe in seconds
+    Returns:
+        List of search results from GitLab API or None
+
+    """
     results = []
 
     if logging_type == 'json':
@@ -122,9 +145,11 @@ def search(gitlab: GitLabAPIClient,
             query_formatted = query.replace('"', '')
             if search_results:
                 if logging_type == 'json':
-                    log_queue.put(('INFO', f'{len(search_results)} {scope} found matching search term: {query_formatted}'))
+                    log_queue.put(('INFO', f'{len(search_results)} {scope} '
+                                           f'found matching search term: {query_formatted}'))
                 else:
-                    log_handler.log('INFO', f'{len(search_results)} {scope} found matching search term: {query_formatted}')
+                    log_handler.log('INFO', f'{len(search_results)} {scope} '
+                                            f'found matching search term: {query_formatted}')
 
                 result = multiprocessing.Manager().list()
 
@@ -514,7 +539,8 @@ def _snippet_worker(args: WorkerArgs) -> List[Dict]:
         try:
             snippet_object = snippet.create_from_dict(snippet_dict)
             if convert_to_epoch(snippet_object.created_at) > (now - args.timeframe) and \
-                    (args.regex.search(str(snippet_object.title)) or args.regex.search(str(snippet_object.description))):
+                    (args.regex.search(str(snippet_object.title)) or
+                     args.regex.search(str(snippet_object.description))):
                 if args.regex.search(str(snippet_object.title)):
                     match_string = args.regex.search(str(snippet_object.title)).group(0)
                 else:
