@@ -4,14 +4,15 @@ import re
 import time
 import traceback
 import hashlib
+from multiprocessing import Queue
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from requests.exceptions import SSLError
 
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 from gitlab_watchman.exceptions import GitLabWatchmanGetObjectError, GitLabWatchmanAuthenticationError
-from gitlab_watchman.loggers import JSONLogger, StdoutLogger
+from gitlab_watchman.loggers import JSONLogger, StdoutLogger, init_logger
 from gitlab_watchman.models import (
     signature,
     note,
@@ -27,7 +28,11 @@ from gitlab_watchman.models import (
     project,
     group
 )
-from gitlab_watchman.utils import convert_to_epoch, deduplicate_results, split_to_chunks
+from gitlab_watchman.utils import (
+    convert_to_epoch,
+    deduplicate_results,
+    split_to_chunks
+)
 
 ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 
@@ -35,14 +40,14 @@ ALL_TIME = calendar.timegm(time.gmtime()) + 1576800000
 @dataclass
 class WorkerArgs:
     """ Dataclass for multiprocessing arguments """
-
     gitlab_client: GitLabAPIClient
     search_result_list: List[Dict]
     regex: re.Pattern[str]
     timeframe: int
     results_list: List[Dict]
     verbose: bool
-    log_handler: JSONLogger | StdoutLogger
+    log_queue: Optional[Queue] = None
+    log_handler: Optional[JSONLogger | StdoutLogger] = None
 
 
 def initiate_gitlab_connection(token: str,
@@ -85,102 +90,103 @@ def find_group_owners(group_members: List[Dict]) -> List[Dict]:
     return member_list
 
 
-def find_user_owner(user_list: List[Dict]) -> List[Dict]:
-    """ Return user who owns a namespace
-
-    Args:
-        user_list: List of users
-    Returns:
-        List of formatted users owning a namespace
-    """
-
-    owner_list = []
-    for user in user_list:
-        owner_list.append({
-            'user_id': user.get('id'),
-            'name': user.get('name'),
-            'username': user.get('username'),
-            'state': user.get('state')
-        })
-
-    return owner_list
+def log_listener(log_queue: Queue, logging_type: str, debug: bool):
+    log_handler = init_logger(logging_type, debug)
+    while True:
+        record = log_queue.get()
+        if record is None:
+            break
+        level, message = record
+        log_handler.log(level, message)
 
 
 def search(gitlab: GitLabAPIClient,
-           log_handler: StdoutLogger | JSONLogger,
+           logging_type: str,
+           log_handler: JSONLogger | StdoutLogger,
+           debug: bool,
            sig: signature.Signature,
            scope: str,
            verbose: bool,
            timeframe: int = ALL_TIME) -> List[Dict] | None:
-    """ Uses the Search API to get search results for the given scope. These results are then split into (No of cores -
-    1) number of chunks, and Multiprocessing is then used to concurrently filter them against Regex using the relevant
-    worker function
-
-    Args:
-        gitlab: GitLab API object
-        log_handler: Logger object for outputting results
-        sig: Signature object
-        scope: What sort of GitLab objects to search
-        verbose: Whether to use verbose logging or not
-        timeframe: Timeframe to search in
-    Returns:
-        List of JSON formatted results if any are found
-    """
-
     results = []
+
+    if logging_type == 'json':
+        log_queue = Queue()
+        log_process = multiprocessing.Process(target=log_listener, args=(log_queue, logging_type, debug))
+        log_process.start()
 
     for query in sig.search_strings:
         for pattern in sig.patterns:
             regex = re.compile(pattern)
             search_results = gitlab.global_search(query, search_scope=scope)
             query_formatted = query.replace('"', '')
-            log_handler.log('INFO',
-                            f'{len(search_results)} {scope} found matching search term: {query_formatted}')
-            result = multiprocessing.Manager().list()
+            if search_results:
+                if logging_type == 'json':
+                    log_queue.put(('INFO', f'{len(search_results)} {scope} found matching search term: {query_formatted}'))
+                else:
+                    log_handler.log('INFO', f'{len(search_results)} {scope} found matching search term: {query_formatted}')
 
-            chunks = multiprocessing.cpu_count() - 1
-            list_of_chunks = split_to_chunks(search_results, chunks)
+                result = multiprocessing.Manager().list()
 
-            processes = []
+                chunks = multiprocessing.cpu_count() - 1
+                list_of_chunks = split_to_chunks(search_results, chunks)
 
-            target_func_dict = {
-                'blobs': _blob_worker,
-                'wiki_blobs': _wiki_blob_worker,
-                'commits': _commit_worker,
-                'snippet_titles': _snippet_worker,
-                'issues': _issue_worker,
-                'milestones': _milestone_worker,
-                'merge_requests': _merge_request_worker,
-                'notes': _note_worker,
-            }
-            target_func = target_func_dict.get(scope, _blob_worker)
+                processes = []
 
-            for search_list in list_of_chunks:
-                multipro_args = WorkerArgs(
-                    gitlab_client=gitlab,
-                    search_result_list=search_list,
-                    regex=regex,
-                    timeframe=timeframe,
-                    results_list=result,
-                    verbose=verbose,
-                    log_handler=log_handler
-                )
-                p = multiprocessing.Process(target=target_func,
-                                            args=(multipro_args,))
-                processes.append(p)
-                p.start()
+                target_func_dict = {
+                    'blobs': _blob_worker,
+                    'wiki_blobs': _wiki_blob_worker,
+                    'commits': _commit_worker,
+                    'snippet_titles': _snippet_worker,
+                    'issues': _issue_worker,
+                    'milestones': _milestone_worker,
+                    'merge_requests': _merge_request_worker,
+                    'notes': _note_worker,
+                }
+                target_func = target_func_dict.get(scope, _blob_worker)
 
-            for process in processes:
-                process.join()
+                for search_list in list_of_chunks:
+                    multipro_args = WorkerArgs(
+                        gitlab_client=gitlab,
+                        search_result_list=search_list,
+                        regex=regex,
+                        timeframe=timeframe,
+                        results_list=result,
+                        verbose=verbose
+                    )
+                    if logging_type == 'json':
+                        multipro_args.log_queue = log_queue
+                    else:
+                        multipro_args.log_handler = log_handler
+                    p = multiprocessing.Process(target=target_func, args=(multipro_args,))
+                    processes.append(p)
+                    p.start()
 
-            results.append(list(result))
+                for process in processes:
+                    process.join()
 
+                results.append(list(result))
+            else:
+                if logging_type == 'json':
+                    log_queue.put(('INFO', f'No {scope} found matching search term: {query_formatted}'))
+                else:
+                    log_handler.log('INFO', f'No {scope} found matching search term: {query_formatted}')
     if results:
         results = deduplicate_results([item for sublist in results for item in sublist])
-        log_handler.log('INFO', f'{len(results)} total matches found after filtering')
+        if logging_type == 'json':
+            log_queue.put(('INFO', f'{len(results)} total matches found after filtering'))
+            log_queue.put(None)
+            log_process.join()
+        else:
+            log_handler.log('INFO', f'{len(results)} total matches found after filtering')
         return results
     else:
-        log_handler.log('INFO', 'No matches found after filtering')
+        if logging_type == 'json':
+            log_queue.put(('INFO', 'No matches found after filtering'))
+            log_queue.put(None)
+            log_process.join()
+        else:
+            log_handler.log('INFO', 'No matches found after filtering')
 
 
 def _populate_project_owners(gitlab: GitLabAPIClient,
@@ -249,8 +255,12 @@ def _blob_worker(args: WorkerArgs) -> List[Dict]:
                         'watchman_id': watchman_id
                     })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -296,8 +306,12 @@ def _wiki_blob_worker(args: WorkerArgs) -> List[Dict]:
                     results_dict['group'] = group_object
                 args.results_list.append(results_dict)
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -329,8 +343,12 @@ def _commit_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -363,8 +381,12 @@ def _issue_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -395,8 +417,12 @@ def _milestone_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -429,8 +455,12 @@ def _merge_request_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -459,8 +489,12 @@ def _note_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
     except GitLabWatchmanGetObjectError as e:
-        args.log_handler.log('WARNING', e)
-        args.log_handler.log('DEBUG', traceback.format_exc())
+        if args.log_handler:
+            args.log_handler.log('WARNING', e)
+            args.log_handler.log('DEBUG', traceback.format_exc())
+        else:
+            args.log_queue.put('WARNING', e)
+            args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list
 
 
@@ -494,6 +528,10 @@ def _snippet_worker(args: WorkerArgs) -> List[Dict]:
                     'watchman_id': watchman_id
                 })
         except GitLabWatchmanGetObjectError as e:
-            args.log_handler.log('WARNING', e)
-            args.log_handler.log('DEBUG', traceback.format_exc())
+            if args.log_handler:
+                args.log_handler.log('WARNING', e)
+                args.log_handler.log('DEBUG', traceback.format_exc())
+            else:
+                args.log_queue.put('WARNING', e)
+                args.log_queue.put('DEBUG', traceback.format_exc())
     return args.results_list

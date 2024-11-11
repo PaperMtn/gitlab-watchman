@@ -1,23 +1,18 @@
 import argparse
 import calendar
+import datetime
 import multiprocessing
 import os
 import sys
 import time
-import datetime
 import traceback
+from dataclasses import dataclass
 from importlib import metadata
 from typing import List
 
 from gitlab_watchman import watchman_processor
+from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
 from gitlab_watchman.signature_downloader import SignatureDownloader
-from gitlab_watchman.loggers import JSONLogger, StdoutLogger, log_to_csv
-from gitlab_watchman.models import (
-    signature,
-    user,
-    project,
-    group
-)
 from gitlab_watchman.exceptions import (
     GitLabWatchmanError,
     GitLabWatchmanGetObjectError,
@@ -26,35 +21,55 @@ from gitlab_watchman.exceptions import (
     ElasticsearchMissingError,
     MissingEnvVarError
 )
-from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
+from gitlab_watchman.loggers import (
+    JSONLogger,
+    StdoutLogger,
+    log_to_csv,
+    init_logger
+)
+from gitlab_watchman.models import (
+    signature,
+    user,
+    project,
+    group
+)
 
 
-def search(gitlab_connection: GitLabAPIClient,
-           sig: signature.Signature,
-           timeframe: int,
-           scope: str,
-           verbose: bool):
+@dataclass
+class SearchArgs:
+    """ Dataclass to hold search arguments """
+    gitlab_client: GitLabAPIClient
+    sig_list: List[signature.Signature]
+    timeframe: int
+    logging_type: str
+    log_handler: JSONLogger | StdoutLogger
+    debug: bool
+    verbose: bool
+    scopes: List[str]
+
+
+def search(search_args: SearchArgs, sig: signature.Signature, scope: str):
     """ Use the appropriate search function to search GitLab based on the contents
     of the signature file. Output results to stdout
 
     Args:
-        gitlab_connection: GitLab API object
+        search_args: SearchArgs object
         sig: Signature object
-        timeframe: Timeframe to search for
         scope: What sort of GitLab objects to search
-        verbose: Whether to use verbose logging or not
     """
 
     try:
         OUTPUT_LOGGER.log('INFO', f'Searching for {sig.name} in {scope}')
 
         results = watchman_processor.search(
-            gitlab=gitlab_connection,
-            log_handler=OUTPUT_LOGGER,
+            gitlab=search_args.gitlab_client,
+            logging_type=search_args.logging_type,
+            log_handler=search_args.log_handler,
+            debug=search_args.debug,
             sig=sig,
             scope=scope,
-            verbose=verbose,
-            timeframe=timeframe)
+            verbose=search_args.verbose,
+            timeframe=search_args.timeframe)
         if results:
             for log_data in results:
                 OUTPUT_LOGGER.log(
@@ -71,41 +86,18 @@ def search(gitlab_connection: GitLabAPIClient,
         raise e
 
 
-def perform_search(gitlab_connection: GitLabAPIClient,
-                   sig_list: List[signature.Signature],
-                   timeframe: int,
-                   verbose_logging: bool,
-                   scopes: List[str]):
+def perform_search(search_args: SearchArgs):
     """ Helper function to perform the search for each signature and each scope
 
     Args:
-        gitlab_connection: GitLab API object
-        sig_list: List of Signature objects
-        timeframe: Timeframe to search for
-        verbose_logging: Whether to use verbose logging or not
-        scopes: List of scopes to search
+        search_args: SearchArgs object
     """
 
-    for sig in sig_list:
+    for sig in search_args.sig_list:
         if sig.scope:
-            for scope in scopes:
+            for scope in search_args.scopes:
                 if scope in sig.scope:
-                    search(gitlab_connection, sig, timeframe, scope, verbose_logging)
-
-
-def init_logger(logging_type: str, debug: bool) -> JSONLogger | StdoutLogger:
-    """ Create a logger object. Defaults to stdout if no option is given
-
-    Args:
-        logging_type: Type of logging to use
-        debug: Whether to use debug level logging or not
-    Returns:
-        Logger object
-    """
-
-    if not logging_type or logging_type == 'stdout':
-        return StdoutLogger(debug=debug)
-    return JSONLogger(debug=debug)
+                    search(search_args, sig, scope)
 
 
 def validate_variables() -> bool:
@@ -261,44 +253,62 @@ def main():
                 'SUCCESS',
                 f'Projects output to CSV file: {os.path.join(os.getcwd(), "gitlab_projects.csv")}')
 
+        search_args = SearchArgs(
+            gitlab_client=gitlab_client,
+            sig_list=signature_list,
+            timeframe=timeframe,
+            logging_type=logging_type,
+            log_handler=OUTPUT_LOGGER,
+            debug=debug,
+            verbose=verbose,
+            scopes=[])
+
         if everything:
             OUTPUT_LOGGER.log('INFO', 'Getting everything...')
-            perform_search(gitlab_client, signature_list, timeframe, verbose,
-                           [
-                               'blobs',
-                               'commits',
-                               'issues',
-                               'merge_requests',
-                               'wiki_blobs',
-                               'milestones',
-                               'notes',
-                               'snippet_titles'
-                           ])
+            search_args.scopes = [
+                    'blobs',
+                    'commits',
+                    'issues',
+                    'merge_requests',
+                    'wiki_blobs',
+                    'milestones',
+                    'notes',
+                    'snippet_titles'
+                ]
+            perform_search(search_args)
         else:
             if blobs:
                 OUTPUT_LOGGER.log('INFO', 'Searching blobs')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['blobs'])
+                search_args.scopes = ['blobs']
+                perform_search(search_args)
             if commits:
                 OUTPUT_LOGGER.log('INFO', 'Searching commits')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['commits'])
+                search_args.scopes = ['commits']
+                perform_search(search_args)
             if issues:
                 OUTPUT_LOGGER.log('INFO', 'Searching issues')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['issues'])
+                search_args.scopes = ['issues']
+                perform_search(search_args)
             if merge:
                 OUTPUT_LOGGER.log('INFO', 'Searching merge requests')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['merge_requests'])
+                search_args.scopes = ['merge_requests']
+                perform_search(search_args)
             if wiki:
                 OUTPUT_LOGGER.log('INFO', 'Searching wiki blobs')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['wiki_blobs'])
+                search_args.scopes = ['wiki_blobs']
+                perform_search(search_args)
             if milestones:
                 OUTPUT_LOGGER.log('INFO', 'Searching milestones')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['milestones'])
+                search_args.scopes = ['milestones']
+                perform_search(search_args)
             if notes:
                 OUTPUT_LOGGER.log('INFO', 'Searching notes')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['notes'])
+                search_args.scopes = ['notes']
+                perform_search(search_args)
             if snippets:
                 OUTPUT_LOGGER.log('INFO', 'Searching snippets')
-                perform_search(gitlab_client, signature_list, timeframe, verbose, ['snippet_titles'])
+                search_args.scopes = ['snippet_titles']
+                perform_search(search_args)
 
         OUTPUT_LOGGER.log('SUCCESS', f'GitLab Watchman finished execution - Execution time:'
                                      f' {str(datetime.timedelta(seconds=time.time() - start_time))}')
