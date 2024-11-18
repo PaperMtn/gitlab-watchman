@@ -8,7 +8,9 @@ import time
 import traceback
 from dataclasses import dataclass
 from importlib import metadata
-from typing import List
+from typing import List, Dict, Any
+
+import yaml
 
 from gitlab_watchman import watchman_processor
 from gitlab_watchman.clients.gitlab_client import GitLabAPIClient
@@ -19,7 +21,8 @@ from gitlab_watchman.exceptions import (
     GitLabWatchmanNotAuthorisedError,
     GitLabWatchmanAuthenticationError,
     ElasticsearchMissingError,
-    MissingEnvVarError
+    MissingEnvVarError,
+    MisconfiguredConfFileError
 )
 from gitlab_watchman.loggers import (
     JSONLogger,
@@ -100,7 +103,7 @@ def perform_search(search_args: SearchArgs):
                     search(search_args, sig, scope)
 
 
-def validate_variables() -> bool:
+def validate_variables() -> Dict[str, Any]:
     """ Validate whether GitLab Watchman environment variables have been set
 
     Returns:
@@ -112,8 +115,30 @@ def validate_variables() -> bool:
     for var in required_vars:
         if var not in os.environ:
             raise MissingEnvVarError(var)
+    path = f'{os.path.expanduser("~")}/watchman.conf'
+    if os.path.exists(path):
+        try:
+            with open(path) as yaml_file:
+                conf_details = yaml.safe_load(yaml_file)['gitlab_watchman']
+                return {
+                    'disabled_signatures': conf_details.get('disabled_signatures', [])
+                }
+        except Exception as e:
+            raise MisconfiguredConfFileError from e
+    return {}
 
-    return True
+
+def supress_disabled_signatures(signatures: List[signature.Signature],
+                                disabled_signatures: List[str]) -> List[signature.Signature]:
+    """ Supress signatures that are disabled in the config file
+    Args:
+        signatures: List of signatures to filter
+        disabled_signatures: List of signatures to disable
+    Returns:
+        List of signatures with disabled signatures removed
+    """
+
+    return [sig for sig in signatures if sig.id not in disabled_signatures]
 
 
 # pylint: disable=too-many-locals, missing-function-docstring, global-variable-undefined
@@ -183,7 +208,8 @@ def main():
 
         OUTPUT_LOGGER = init_logger(logging_type, debug)
 
-        validate_variables()
+        config = validate_variables()
+        disabled_signatures = config.get('disabled_signatures', [])
         gitlab_client = watchman_processor.initiate_gitlab_connection(
             os.environ.get('GITLAB_WATCHMAN_TOKEN'),
             os.environ.get('GITLAB_WATCHMAN_URL'))
@@ -204,6 +230,9 @@ def main():
 
         OUTPUT_LOGGER.log('INFO', 'Downloading and importing signatures')
         signature_list = SignatureDownloader(OUTPUT_LOGGER).download_signatures()
+        if len(disabled_signatures) > 0:
+            signature_list = supress_disabled_signatures(signature_list, disabled_signatures)
+            OUTPUT_LOGGER.log('INFO', f'The following signatures have been suppressed: {disabled_signatures}')
         OUTPUT_LOGGER.log('SUCCESS', f'{len(signature_list)} signatures loaded')
         OUTPUT_LOGGER.log('INFO', f'{multiprocessing.cpu_count() - 1} cores being used')
 

@@ -80,9 +80,9 @@ class StdoutLogger:
         if notify_type == "result":
             if scope == 'blobs':
                 message = 'SCOPE: Blob' \
-                          f'    AUTHOR: {message.get("commit").get("author_name")} - ' \
-                          f'{message.get("commit").get("author_email")}' \
                           f'    COMMITTED: {message.get("commit").get("committed_date")} \n' \
+                          f'    AUTHOR: {message.get("commit").get("author_name")}   ' \
+                          f'EMAIL: {message.get("commit").get("author_email")}\n' \
                           f'    FILENAME: {message.get("blob").get("basename")} \n' \
                           f'    URL: {message.get("project").get("web_url")}/-/blob/{message.get("blob").get("ref")}/' \
                           f'{message.get("blob").get("filename")} \n' \

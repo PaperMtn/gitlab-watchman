@@ -42,9 +42,9 @@ def exception_handler(func):
             elif e.response_code == 500:
                 pass
             else:
-                raise GitLabWatchmanGetObjectError(e.error_message, func) from e
-        except IndexError as e:
-            raise GitLabWatchmanGetObjectError('Object not found', func) from e
+                raise GitLabWatchmanGetObjectError(e.error_message, func, args) from e
+        except IndexError:
+            pass
         except Exception as e:
             raise e
 
@@ -112,7 +112,7 @@ class GitLabAPIClient:
             GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
             GitlabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        return self.gitlab_client.users.list(username=username)[0].asdict()
+        return self.gitlab_client.users.list(username=username, active=False, blocked=True)[0].asdict()
 
     @exception_handler
     def get_settings(self) -> Dict[str, Any]:
@@ -272,7 +272,7 @@ class GitLabAPIClient:
             GitLabWatchmanNotAuthorisedError: If the user is not authorized to access the resource
             GitLabWatchmanGetObjectError: If an error occurs while getting the object
         """
-        members = self.gitlab_client.groups.get(group_id).members.list(as_list=True)
+        members = self.gitlab_client.groups.get(group_id).members.list(as_list=True, get_all=True)
         return [member.asdict() for member in members]
 
     @exception_handler

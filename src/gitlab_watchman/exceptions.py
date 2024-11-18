@@ -36,8 +36,8 @@ class GitLabWatchmanGetObjectError(GitLabWatchmanError):
     """ Exception raised when an error occurs while getting a GitLab API object.
     """
 
-    def __init__(self, error_message: str, func):
-        super().__init__(f'GitLab get object error: {error_message} - Function: {func.__name__}')
+    def __init__(self, error_message: str, func, arg):
+        super().__init__(f'GitLab get object error: {error_message} - Function: {func.__name__} - Arg: {arg}')
         self.error_message = error_message
 
 
@@ -49,3 +49,12 @@ class GitLabWatchmanNotAuthorisedError(GitLabWatchmanError):
     def __init__(self, error_message: str, func):
         super().__init__(f'Not authorised: {error_message} - {func.__name__}')
         self.error_message = error_message
+
+
+class MisconfiguredConfFileError(Exception):
+    """ Exception raised when the config file watchman.conf is missing.
+    """
+
+    def __init__(self):
+        self.message = f"The file watchman.conf doesn't contain config details for GitLab Watchman"
+        super().__init__(self.message)
