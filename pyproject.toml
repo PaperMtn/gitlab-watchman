@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab-watchman"
-version = "3.0.0"
+version = "3.1.0"
 description = "Finding exposed secrets and personal data in GitLab"
 authors = ["PaperMtn <papermtn@protonmail.com>"]
 license = "GPL-3.0"
