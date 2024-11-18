@@ -476,6 +476,7 @@ class GitLabMockData:
 
     MOCK_SIGNATURE_DICT = {
         'name': 'Akamai API Access Tokens',
+        'id': 'akamai_api_access_tokens',
         'status': 'enabled',
         'author': 'PaperMtn',
         'date': '2023-12-22',
@@ -565,6 +566,7 @@ def mock_user():
 @pytest.fixture
 def mock_wiki_blob():
     return wiki_blob.create_from_dict(GitLabMockData.MOCK_WIKI_BLOB_DICT)
+
 
 @pytest.fixture
 def mock_signature():

@@ -11,6 +11,7 @@ def test_signature_initialisation(mock_signature):
 
     # Test that the signature object has the correct attributes
     assert mock_signature.name == GitLabMockData.MOCK_SIGNATURE_DICT.get('name')
+    assert mock_signature.id == GitLabMockData.MOCK_SIGNATURE_DICT.get('id')
     assert mock_signature.status == GitLabMockData.MOCK_SIGNATURE_DICT.get('status')
     assert mock_signature.author == GitLabMockData.MOCK_SIGNATURE_DICT.get('author')
     assert mock_signature.date == GitLabMockData.MOCK_SIGNATURE_DICT.get('date')
@@ -24,6 +25,12 @@ def test_field_type():
     # Test that correct error is raised when name is not a string
     signature_dict = copy.deepcopy(GitLabMockData.MOCK_SIGNATURE_DICT)
     signature_dict['name'] = 123
+    with pytest.raises(TypeError):
+        test_signature = signature.create_from_dict(signature_dict)
+
+    # Test that correct error is raised when id is not a string
+    signature_dict = copy.deepcopy(GitLabMockData.MOCK_SIGNATURE_DICT)
+    signature_dict['id'] = 123
     with pytest.raises(TypeError):
         test_signature = signature.create_from_dict(signature_dict)
 

@@ -1,18 +1,21 @@
-## [3.1.0] - 2024-11-x
-### Changed
-- Package management and deployment moved to Poetry
-- Docker build process improved using multi-stage builds. The Dockerfile now doesn't contain any unnecessary files, and is much smaller.
-- Refactor to separate GitLab client and Watchman processing into modules
-- Refactor to implement python-gitlab library for GitLab API calls, instead of the custom client used previously.
-  - This change allows for more efficient and easier to read code, is more reliable, and also allows for enhancements to be added more easily in the future.
-
+## [3.1.0] - 2024-11-18
 ### Added
 - Signatures now loaded into memory instead of being saved to disk. This allows for running on read-only filesystems.
+- Ability to disable signatures by their ID in the watchman.conf config file.
+  - These signatures will not be used when running Slack Watchman
+  - Signature IDs for each signature can be found in the Watchman Signatures repository
 - Tests for Docker build
 - Enhanced deduplication of findings
   - The same match should not be returned multiple times within the same scope. E.g. if a token is found in a commit, it should not be returned multiple times in the same commit.
 - All dates are now converted and logged in UTC
 - Unit tests added for models and utils
+
+### Changed
+- Package management and deployment moved to Poetry
+- Docker build process improved using multi-stage builds. The Dockerfile now doesn't contain any unnecessary files, and is much smaller.
+- Refactor to separate GitLab client and Watchman processing into modules
+- Refactor to implement [python-gitlab](https://python-gitlab.readthedocs.io/) library for GitLab API calls, instead of the custom client used previously.
+  - This change gives more efficient and easier to read code, is more reliable, and also allows for enhancements to be added more easily in the future.
 
 ### Fixed
 - Error when searching wiki-blobs
