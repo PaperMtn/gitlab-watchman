@@ -1,20 +1,24 @@
 from dataclasses import dataclass
+from datetime import datetime
+
+from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Commit(object):
+# pylint: disable=too-many-instance-attributes
+class Commit:
     """ Class that defines File objects for GitLab files"""
 
     id: str
-    created_at: str
+    created_at: datetime | None
     title: str
     message: str
     author_name: str
     author_email: str
-    authored_date: str
+    authored_date: datetime | None
     committer_name: str
     committer_email: str
-    committed_date: str
+    committed_date: datetime | None
     web_url: str
     status: str
     project_id: str
@@ -26,19 +30,19 @@ def create_from_dict(commit_dict: dict) -> Commit:
     Args:
         commit_dict: dict/JSON format data from GitLab API
     Returns:
-        A new Note object
+        A new Commit object
     """
 
     return Commit(
         id=commit_dict.get('id'),
-        created_at=commit_dict.get('created_at'),
+        created_at=convert_to_utc_datetime(commit_dict.get('created_at')),
         title=commit_dict.get('title'),
         message=commit_dict.get('message'),
         author_name=commit_dict.get('author_name'),
         author_email=commit_dict.get('author_email'),
-        authored_date=commit_dict.get('authored_date'),
+        authored_date=convert_to_utc_datetime(commit_dict.get('authored_date')),
         committer_name=commit_dict.get('committer_name'),
-        committed_date=commit_dict.get('committed_date'),
+        committed_date=convert_to_utc_datetime(commit_dict.get('committed_date')),
         committer_email=commit_dict.get('committer_email'),
         web_url=commit_dict.get('web_url'),
         status=commit_dict.get('status'),

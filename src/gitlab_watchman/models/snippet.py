@@ -1,29 +1,32 @@
 from dataclasses import dataclass
+from datetime import datetime
+from typing import List
 
-from . import user
+from gitlab_watchman.models import user
+from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Snippet(object):
+class File:
+    """ Class that defines File objects for GitLab snippets"""
+    path: str
+    raw_url: str
+
+
+@dataclass(slots=True)
+class Snippet:
     """ Class that defines User objects for GitLab snippets"""
 
     id: str
     title: str
     description: str
     visibility: str or bool
-    created_at: str
-    updated_at: str
+    created_at: datetime | None
+    updated_at: datetime | None
     web_url: str
     author: user.User
     file_name: str
-    files: list
-
-
-@dataclass(slots=True)
-class File(object):
-
-    path: str
-    raw_url: str
+    files: List[File]
 
 
 def create_from_dict(snip_dict: dict) -> Snippet:
@@ -44,14 +47,19 @@ def create_from_dict(snip_dict: dict) -> Snippet:
     else:
         file_list = None
 
+    if snip_dict.get('author'):
+        author = user.create_from_dict(snip_dict.get('author'))
+    else:
+        author = None
+
     return Snippet(
         id=snip_dict.get('id'),
         title=snip_dict.get('title'),
         description=snip_dict.get('description'),
         visibility=snip_dict.get('visibility'),
-        author=user.create_from_dict(snip_dict.get('author', {})),
-        created_at=snip_dict.get('created_at'),
-        updated_at=snip_dict.get('updated_at'),
+        author=author,
+        created_at=convert_to_utc_datetime(snip_dict.get('created_at')),
+        updated_at=convert_to_utc_datetime(snip_dict.get('updated_at')),
         web_url=snip_dict.get('web_url'),
         file_name=snip_dict.get('file_name'),
         files=file_list

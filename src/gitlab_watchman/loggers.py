@@ -7,26 +7,37 @@ import logging.handlers
 import re
 import traceback
 import csv
+import urllib.parse
 from logging import Logger
 from typing import Any, Dict, List, ClassVar, Protocol
 from colorama import Fore, Back, Style, init
 
+from gitlab_watchman.utils import EnhancedJSONEncoder
+
 
 class StdoutLogger:
+    """ Class to log to stdout """
     def __init__(self, **kwargs):
         self.debug = kwargs.get('debug')
         self.print_header()
         init()
 
+    # pylint: disable=too-many-branches
     def log(self,
-            mes_type: str,
+            msg_level: str,
             message: Any,
             **kwargs) -> None:
+        """ Log to stdout
+
+        Args:
+            msg_level: Level message to log
+            message: Message data to log
+        """
 
         notify_type = kwargs.get('notify_type')
         scope = kwargs.get('scope')
 
-        if not self.debug and mes_type == 'DEBUG':
+        if not self.debug and msg_level == 'DEBUG':
             return
 
         if dataclasses.is_dataclass(message):
@@ -41,7 +52,7 @@ class StdoutLogger:
                       f'        URL: {message.get("kas").get("externalUrl")}  \n'\
                       f'        VERSION: {message.get("kas").get("version")}  \n' \
                       f'    ENTERPRISE: {message.get("enterprise")}'
-            mes_type = 'INSTANCE'
+            msg_level = 'INSTANCE'
         if notify_type == "user":
             message = f'USER: \n' \
                       f'    ID: {message.get("id")}  \n' \
@@ -54,7 +65,7 @@ class StdoutLogger:
                       f'    CAN_CREATE_GROUP: {message.get("can_create_group")} \n'\
                       f'    CAN_CREATE_PROJECT: {message.get("can_create_project")} \n' \
                       f'    2FA_ENABLED: {message.get("two_factor_enabled")}'
-            mes_type = 'USER'
+            msg_level = 'USER'
         if notify_type == "token":
             message = f'PERSONAL_ACCESS_TOKEN: \n' \
                       f'    ID: {message.get("id")}  \n' \
@@ -65,13 +76,13 @@ class StdoutLogger:
                       f'    LAST_USED_AT: {message.get("last_used_at")} \n' \
                       f'    ACTIVE: {message.get("active")} \n'\
                       f'    EXPIRY: {message.get("expires_at", "Never")}'
-            mes_type = 'WARNING'
+            msg_level = 'WARNING'
         if notify_type == "result":
             if scope == 'blobs':
                 message = 'SCOPE: Blob' \
-                          f'    AUTHOR: {message.get("commit").get("author_name")} - ' \
-                          f'{message.get("commit").get("author_email")}' \
                           f'    COMMITTED: {message.get("commit").get("committed_date")} \n' \
+                          f'    AUTHOR: {message.get("commit").get("author_name")}   ' \
+                          f'EMAIL: {message.get("commit").get("author_email")}\n' \
                           f'    FILENAME: {message.get("blob").get("basename")} \n' \
                           f'    URL: {message.get("project").get("web_url")}/-/blob/{message.get("blob").get("ref")}/' \
                           f'{message.get("blob").get("filename")} \n' \
@@ -100,10 +111,26 @@ class StdoutLogger:
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
             elif scope == 'wiki_blobs':
+                if message.get('project_wiki'):
+                    wiki_path = (f'{message.get("project").get("web_url")}/-/wikis/'
+                                 f'{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}')
+                elif message.get('group_wiki'):
+                    wiki_path = (f'{message.get("group").get("web_url")}/-/wikis/'
+                                 f'{urllib.parse.quote_plus(message.get("wiki_blob").get("path"))}')
+                else:
+                    wiki_path = 'N/A'
+
+                if message.get('project_wiki'):
+                    wiki_type = 'Project Wiki'
+                elif message.get('group_wiki'):
+                    wiki_type = 'Group Wiki'
+                else:
+                    wiki_type = '???'
+
                 message = 'SCOPE: Wiki Blob' \
                           f'    FILENAME: {message.get("wiki_blob").get("filename")} \n' \
-                          f'    URL: {message.get("project").get("web_url")}/-/wikis/' \
-                          f'{message.get("wiki_blob").get("basename")} \n' \
+                          f'    WIKI_TYPE: {wiki_type} \n' \
+                          f'    URL: {wiki_path} \n' \
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
             elif scope == 'issues':
@@ -126,12 +153,12 @@ class StdoutLogger:
                           f'    URL: {message.get("snippet").get("web_url")} \n' \
                           f'    POTENTIAL_SECRET: {message.get("match_string")} \n' \
                           f'    -----'
-            mes_type = 'RESULT'
+            msg_level = 'RESULT'
         try:
-            self.log_to_stdout(message, mes_type)
+            self.log_to_stdout(message, msg_level)
         except Exception as e:
             print(e)
-            self.log_to_stdout(message, mes_type)
+            self.log_to_stdout(message, msg_level)
 
     def log_to_stdout(self,
                       message: Any,
@@ -207,7 +234,7 @@ class StdoutLogger:
             type_colorer = re.compile(r'([A-Z]{3,})', re.VERBOSE)
             mes_type = type_colorer.sub(high_color + r'\1' + base_color, mes_type.lower())
             # Make header words coloured
-            header_words = re.compile('([A-Z_0-9]{2,}:)\s', re.VERBOSE)
+            header_words = re.compile(r'([A-Z_0-9]{2,}:)\s', re.VERBOSE)
             message = header_words.sub(key_color + Style.BRIGHT + r'\1 ' + Fore.WHITE + Style.NORMAL, str(message))
             sys.stdout.write(
                 f"{reset_all}{style}[{base_color}{mes_type}{Fore.WHITE}]{style} {message}{Fore.WHITE}{Style.NORMAL}\n")
@@ -217,7 +244,10 @@ class StdoutLogger:
                 sys.exit(1)
             print('Formatting error')
 
-    def print_header(self) -> None:
+    @staticmethod
+    def print_header() -> None:
+        """ Prints the header for the logger"""
+
         print(" ".ljust(79) + Style.BRIGHT)
 
         print(Fore.LIGHTRED_EX + Style.BRIGHT +
@@ -245,14 +275,8 @@ class StdoutLogger:
         print(' '.ljust(79) + Fore.GREEN)
 
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
 class JSONLogger(Logger):
+    """ Custom logger class for JSON logging"""
     def __init__(self, name: str = 'gitlab_watchman', **kwargs):
         super().__init__(name)
         self.notify_format = logging.Formatter(
@@ -278,13 +302,13 @@ class JSONLogger(Logger):
 
     def log(self,
             level: str,
-            log_data: str or Dict,
+            msg: str or Dict,
             **kwargs):
         if level.upper() == 'NOTIFY':
             self.handler.setFormatter(self.notify_format)
             self.logger.info(
                 json.dumps(
-                    log_data,
+                    msg,
                     cls=EnhancedJSONEncoder),
                 extra={
                     'scope': kwargs.get('scope', ''),
@@ -292,32 +316,33 @@ class JSONLogger(Logger):
                     'severity': kwargs.get('severity', '')})
         elif level.upper() == 'INFO':
             self.handler.setFormatter(self.info_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'DEBUG':
             self.handler.setFormatter(self.info_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'SUCCESS':
             self.handler.setFormatter(self.success_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'INSTANCE':
             self.handler.setFormatter(self.instance_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'USER':
             self.handler.setFormatter(self.user_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         elif level.upper() == 'TOKEN':
             self.handler.setFormatter(self.token_format)
-            self.logger.info(json.dumps(log_data))
+            self.logger.info(json.dumps(msg))
         else:
             self.handler.setFormatter(self.info_format)
-            self.logger.critical(log_data)
+            self.logger.critical(msg)
 
 
+# pylint: disable=missing-class-docstring
 class IsDataclass(Protocol):
     __dataclass_fields__: ClassVar[Dict]
 
 
-def export_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
+def log_to_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
     """ Export the data passed in a dataclass to CSV file
 
     Args:
@@ -334,3 +359,18 @@ def export_csv(csv_name: str, export_data: List[IsDataclass]) -> None:
         f.close()
     except Exception as e:
         print(e)
+
+
+def init_logger(logging_type: str, debug: bool) -> JSONLogger | StdoutLogger:
+    """ Create a logger object. Defaults to stdout if no option is given
+
+    Args:
+        logging_type: Type of logging to use
+        debug: Whether to use debug level logging or not
+    Returns:
+        Logger object
+    """
+
+    if not logging_type or logging_type == 'stdout':
+        return StdoutLogger(debug=debug)
+    return JSONLogger(debug=debug)

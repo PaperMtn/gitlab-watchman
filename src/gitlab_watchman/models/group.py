@@ -1,8 +1,12 @@
 from dataclasses import dataclass
+from datetime import datetime
+
+from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Group(object):
+# pylint: disable=too-many-instance-attributes
+class Group:
     """ Class that defines User objects for GitLab groups"""
 
     id: str
@@ -17,7 +21,7 @@ class Group(object):
     request_access_enabled: bool
     full_name: str
     full_path: str
-    created_at: str
+    created_at: datetime | None
     web_url: str
     ip_restriction_ranges: str
 
@@ -28,7 +32,7 @@ def create_from_dict(group_dict: dict) -> Group:
     Args:
         group_dict: dict/JSON format data from GitLab API
     Returns:
-        A new Project object
+        A new Group object
     """
 
     return Group(
@@ -44,7 +48,7 @@ def create_from_dict(group_dict: dict) -> Group:
         request_access_enabled=group_dict.get('request_access_enabled'),
         full_name=group_dict.get('full_name'),
         full_path=group_dict.get('full_path'),
-        created_at=group_dict.get('created_at'),
+        created_at=convert_to_utc_datetime(group_dict.get('created_at')),
         web_url=group_dict.get('web_url'),
         ip_restriction_ranges=group_dict.get('ip_restriction_ranges')
     )

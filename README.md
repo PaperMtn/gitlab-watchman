@@ -55,6 +55,18 @@ GitLab Watchman can enumerate potentially useful information from a GitLab insta
 ### Signatures
 GitLab Watchman uses custom YAML signatures to detect matches in GitLab. These signatures are pulled from the central [Watchman Signatures repository](https://github.com/PaperMtn/watchman-signatures). Slack Watchman automatically updates its signature base at runtime to ensure its using the latest signatures to detect secrets.
 
+#### Suppressing Signatures
+You can define signatures that you want to disable when running GitLab Watchman by adding their IDs to the `disabled_signatures` section of the `watchman.conf` file. For example:
+
+```yaml
+gitlab_watchman:
+  disabled_signatures:
+    - tokens_generic_bearer_tokens
+    - tokens_generic_access_tokens
+```
+
+You can find the ID of a signature in the individual YAML files in [Watchman Signatures repository](https://github.com/PaperMtn/watchman-signatures).
+
 ### Logging
 
 GitLab Watchman gives the following logging options:
@@ -105,6 +117,16 @@ You also need to provide the URL of your GitLab instance.
 
 #### Providing token & URL
 GitLab Watchman will get the GitLab token and URL from the environment variables `GITLAB_WATCHMAN_TOKEN` and `GITLAB_WATCHMAN_URL`.
+
+### watchman.conf file
+Configuration options can be passed in a file named `watchman.conf` which must be stored in your home directory. The file should follow the YAML format, and should look like below:
+```yaml
+gitlab_watchman:
+  disabled_signatures:
+    - tokens_generic_bearer_tokens
+    - tokens_generic_access_tokens
+```
+GitLab Watchman will look for this file at runtime, and use the configuration options from here.
 
 ## Installation
 You can install the latest stable version via pip:

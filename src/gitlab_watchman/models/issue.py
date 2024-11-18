@@ -1,10 +1,13 @@
 from dataclasses import dataclass
+from datetime import datetime
 
-from . import user
+from gitlab_watchman.models import user
+from gitlab_watchman.utils import convert_to_utc_datetime
 
 
 @dataclass(slots=True)
-class Issue(object):
+# pylint: disable=too-many-instance-attributes
+class Issue:
     """ Class that defines Issues objects for GitLab issues"""
 
     id: str
@@ -13,10 +16,10 @@ class Issue(object):
     title: str
     description: str
     state: str
-    created_at: str
-    updated_at: str
-    closed_by: user.User
-    closed_at: str
+    created_at: datetime | None
+    updated_at: datetime | None
+    closed_by: user.User | None
+    closed_at: datetime | None
     author: str
     type: str
     author: user.User
@@ -37,6 +40,11 @@ def create_from_dict(issue_dict: dict) -> Issue:
     else:
         closed_by = None
 
+    if issue_dict.get('author'):
+        author = user.create_from_dict(issue_dict.get('author'))
+    else:
+        author = None
+
     return Issue(
         id=issue_dict.get('id'),
         iid=issue_dict.get('iid'),
@@ -44,12 +52,12 @@ def create_from_dict(issue_dict: dict) -> Issue:
         title=issue_dict.get('title'),
         description=issue_dict.get('description'),
         state=issue_dict.get('state'),
-        created_at=issue_dict.get('created_at'),
-        updated_at=issue_dict.get('updated_at'),
+        created_at=convert_to_utc_datetime(issue_dict.get('created_at')),
+        updated_at=convert_to_utc_datetime(issue_dict.get('updated_at')),
         closed_by=closed_by,
-        closed_at=issue_dict.get('closed_at'),
+        closed_at=convert_to_utc_datetime(issue_dict.get('closed_at')),
         type=issue_dict.get('type'),
-        author=user.create_from_dict(issue_dict.get('author')),
+        author=author,
         confidential=issue_dict.get('confidential'),
         web_url=issue_dict.get('web_url'),
     )

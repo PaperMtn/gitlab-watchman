@@ -1,6 +1,54 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+[tool.poetry]
+name = "gitlab-watchman"
+version = "3.1.0"
+description = "Finding exposed secrets and personal data in GitLab"
+authors = ["PaperMtn <papermtn@protonmail.com>"]
+license = "GPL-3.0"
+readme = "README.md"
+homepage = "https://github.com/PaperMtn/gitlab-watchman"
+repository = "https://github.com/PaperMtn/gitlab-watchman"
+keywords = [ "audit", "dlp", "gitlab", "gitlab-watchman", "watchman", "blue-team", "red-team", "threat-hunting" ]
+classifiers = [
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 ]
-build-backend = "setuptools.build_meta"
+
+[tool.poetry.urls]
+"Blog" = "https://papermtn.co.uk/category/tools/gitlab-watchman/"
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+colorama = "^0.4.6"
+pyyaml = "^6.0.2"
+requests = "^2.32.3"
+python-gitlab = "^5.0.0"
+pytz = "^2024.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+coverage = "^7.2.3"
+pylint = "^3.3.1"
+
+[tool.poetry.scripts]
+gitlab-watchman = "gitlab_watchman:main"
+
+[tool.pylint.messages_control]
+max-line-length = 120
+max-attributes = 10
+max-args = 10
+disable = [
+    "missing-module-docstring",
+    "too-few-public-methods",
+    "arguments-differ",
+    "logging-fstring-interpolation",
+    "no-else-return",
+    "no-else-raise",
+    "inconsistent-return-statements",
+    "broad-exception-caught",
+    "duplicate-code",
+]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

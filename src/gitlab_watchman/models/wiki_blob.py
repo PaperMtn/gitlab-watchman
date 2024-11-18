@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class WikiBlob(object):
+class WikiBlob:
     """ Class that defines WikiBlob objects for GitLab blobs"""
 
     basename: str
@@ -11,7 +11,8 @@ class WikiBlob(object):
     filename: str
     id: str
     ref: str
-    project_id: str
+    project_id: str | None
+    group_id: str | None
 
 
 def create_from_dict(blob_dict: dict) -> WikiBlob:
@@ -30,5 +31,6 @@ def create_from_dict(blob_dict: dict) -> WikiBlob:
         path=blob_dict.get('path'),
         filename=blob_dict.get('filename'),
         ref=blob_dict.get('ref'),
-        project_id=blob_dict.get('project_id')
+        project_id=blob_dict.get('project_id'),
+        group_id=blob_dict.get('group_id', None)
     )
